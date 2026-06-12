@@ -1,0 +1,86 @@
+const router = require('express').Router();
+const { query, queryOne, execute } = require('../config/database');
+const { authenticate, authorize } = require('../middleware/auth');
+
+router.use(authenticate);
+
+function calcGrade(final) {
+  if (final >= 90) return 'A+'; if (final >= 80) return 'A';
+  if (final >= 75) return 'B+'; if (final >= 70) return 'B';
+  if (final >= 65) return 'C+'; if (final >= 60) return 'C';
+  if (final >= 50) return 'D';  return 'F';
+}
+
+// GET /api/results
+router.get('/', async (req, res) => {
+  try {
+    const { studentId, courseId, semesterId, page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+    let where = '1=1'; const params = [];
+    if (studentId)  { where += ' AND r.StudentID=?';  params.push(studentId); }
+    if (courseId)   { where += ' AND r.CourseID=?';   params.push(courseId); }
+    if (semesterId) { where += ' AND r.SemesterID=?'; params.push(semesterId); }
+
+    const [{ total }] = await query(`SELECT COUNT(*) as total FROM RESULT r WHERE ${where}`, params);
+    const rows = await query(
+      `SELECT r.*, CONCAT(s.FirstName,' ',s.LastName) as StudentName, c.CourseName, c.CourseCode, sem.SemesterName
+       FROM RESULT r JOIN STUDENT s ON r.StudentID=s.StudentID JOIN COURSE c ON r.CourseID=c.CourseID
+       LEFT JOIN SEMESTER sem ON r.SemesterID=sem.SemesterID WHERE ${where}
+       ORDER BY r.SemesterID, c.CourseName LIMIT ${limit} OFFSET ${offset}`, params);
+    res.json({ success: true, data: rows, pagination: { total, page: +page, limit: +limit, totalPages: Math.ceil(total / limit) } });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// GET /api/results/transcript/:studentId
+router.get('/transcript/:studentId', async (req, res) => {
+  try {
+    const student = await queryOne('SELECT s.*, p.ProgramName FROM STUDENT s LEFT JOIN ENROLLMENT e ON s.StudentID=e.StudentID LEFT JOIN PROGRAM p ON e.ProgramID=p.ProgramID WHERE s.StudentID=? LIMIT 1', [req.params.studentId]);
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
+    const results = await query(
+      `SELECT r.*, c.CourseName, c.CourseCode, c.CreditValue, sem.SemesterName, sem.AcademicYear
+       FROM RESULT r JOIN COURSE c ON r.CourseID=c.CourseID LEFT JOIN SEMESTER sem ON r.SemesterID=sem.SemesterID
+       WHERE r.StudentID=? ORDER BY sem.StartDate, c.CourseName`, [req.params.studentId]);
+    const gpa = results.length ? results.reduce((s,r) => s + parseFloat(r.FinalGrade||0), 0) / results.length : 0;
+    res.json({ success: true, data: { student, results, gpa: gpa.toFixed(2) } });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// POST /api/results
+router.post('/', authorize('Administrator','Lecturer'), async (req, res) => {
+  try {
+    const { StudentID, CourseID, SemesterID, CAGrade, ExamGrade } = req.body;
+    if (!StudentID || !CourseID) return res.status(400).json({ success: false, message: 'Student and course are required.' });
+    const ca    = parseFloat(CAGrade)   || 0;
+    const exam  = parseFloat(ExamGrade) || 0;
+    const final = parseFloat(((ca * 0.30) + (exam * 0.70)).toFixed(2));
+
+    const existing = await queryOne('SELECT ResultID FROM RESULT WHERE StudentID=? AND CourseID=? AND SemesterID=?', [StudentID, CourseID, SemesterID||null]);
+    if (existing) {
+      await execute('UPDATE RESULT SET CAGrade=?,ExamGrade=?,FinalGrade=? WHERE ResultID=?', [ca, exam, final, existing.ResultID]);
+      return res.json({ success: true, message: 'Result updated.', data: { CAGrade: ca, ExamGrade: exam, FinalGrade: final, grade: calcGrade(final) } });
+    }
+    const r = await execute('INSERT INTO RESULT (StudentID,CourseID,SemesterID,CAGrade,ExamGrade,FinalGrade) VALUES (?,?,?,?,?,?)', [StudentID, CourseID, SemesterID||null, ca, exam, final]);
+    res.status(201).json({ success: true, message: 'Result recorded.', data: { ResultID: r.insertId, FinalGrade: final, grade: calcGrade(final) } });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// PUT /api/results/:id
+router.put('/:id', authorize('Administrator','Lecturer'), async (req, res) => {
+  try {
+    const { CAGrade, ExamGrade } = req.body;
+    const ca = parseFloat(CAGrade)||0; const exam = parseFloat(ExamGrade)||0;
+    const final = parseFloat(((ca*0.30)+(exam*0.70)).toFixed(2));
+    await execute('UPDATE RESULT SET CAGrade=?,ExamGrade=?,FinalGrade=? WHERE ResultID=?', [ca, exam, final, req.params.id]);
+    res.json({ success: true, message: 'Result updated.', data: { FinalGrade: final, grade: calcGrade(final) } });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// DELETE /api/results/:id
+router.delete('/:id', authorize('Administrator'), async (req, res) => {
+  try {
+    await execute('DELETE FROM RESULT WHERE ResultID = ?', [req.params.id]);
+    res.json({ success: true, message: 'Result deleted.' });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+module.exports = router;

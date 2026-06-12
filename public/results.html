@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Results | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-chart-bar me-2" style="color:var(--gold)"></i>Academic Results</h1><p class="page-subtitle">CA (30%) + Exam (70%) = Final Grade</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Enter Result</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
+        <div class="col-md-3"><label class="form-label mb-1" style="font-size:.78rem">Student</label><select class="form-select" id="studentFilter"><option value="">All Students</option></select></div>
+        <div class="col-md-3"><label class="form-label mb-1" style="font-size:.78rem">Course</label><select class="form-select" id="courseFilter"><option value="">All Courses</option></select></div>
+        <div class="col-md-3"><label class="form-label mb-1" style="font-size:.78rem">Semester</label><select class="form-select" id="semesterFilter"><option value="">All Semesters</option></select></div>
+        <div class="col-md-3 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadResults(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('resultsTable','results.csv')"><i class="fas fa-file-csv"></i></button></div>
+      </div></div></div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>Result Records <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="resultsTable">
+            <thead><tr><th>#</th><th>Student</th><th>Course</th><th>Semester</th><th class="text-center">CA (30%)</th><th class="text-center">Exam (70%)</th><th class="text-center">Final Grade</th><th class="text-center">Letter</th><th class="text-center">Actions</th></tr></thead>
+            <tbody id="resultsBody"><tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Enter Result</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="resultForm">
+        <input type="hidden" id="resultId">
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Student *</label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
+          <div class="col-12"><label class="form-label">Course *</label><select class="form-select" id="fCourse" required><option value="">Select course…</option></select></div>
+          <div class="col-12"><label class="form-label">Semester</label><select class="form-select" id="fSemester"><option value="">Select semester…</option></select></div>
+          <div class="col-md-6"><label class="form-label">CA Score (max 30)</label><input type="number" class="form-control" id="fCA" min="0" max="30" step="0.5" value="0" oninput="updatePreview()"></div>
+          <div class="col-md-6"><label class="form-label">Exam Score (max 70)</label><input type="number" class="form-control" id="fExam" min="0" max="70" step="0.5" value="0" oninput="updatePreview()"></div>
+          <div class="col-12">
+            <div class="p-3 rounded" style="background:var(--gray-100);border:1px solid var(--gray-200)">
+              <div class="d-flex justify-content-between align-items-center">
+                <span style="font-size:.82rem;font-weight:600">Calculated Final Grade</span>
+                <div class="text-end"><span id="previewFinal" style="font-size:1.4rem;font-weight:800;color:var(--primary)">0.00</span><span id="previewGrade" style="font-size:1.1rem;font-weight:700;margin-left:.5rem;color:#198754">—</span></div>
+              </div>
+              <div class="progress mt-2" style="height:6px"><div id="previewBar" class="progress-bar bg-primary" style="width:0%;transition:.3s"></div></div>
+              <small class="text-muted" style="font-size:.72rem">Formula: (CA × 30%) + (Exam × 70%)</small>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="saveBtn" onclick="saveResult()"><i class="fas fa-save me-2"></i>Save Result</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+let curPage=1;
+const modal=new bootstrap.Modal(document.getElementById('resultModal'));
+
+initLayout().then(async()=>{
+  const [students,courses,semesters]=await Promise.all([API.students.list({limit:1000}),API.courses.list(),API.get('/api/semesters').catch(()=>({data:[]}))]);
+  if(students?.data){ const sel=document.getElementById('fStudent'),sf=document.getElementById('studentFilter'); students.data.forEach(s=>{const o=`<option value="${s.StudentID}">${s.FirstName} ${s.LastName}</option>`;sel.insertAdjacentHTML('beforeend',o);sf.insertAdjacentHTML('beforeend',o);}); }
+  if(courses?.data){ const sel=document.getElementById('fCourse'),cf=document.getElementById('courseFilter'); courses.data.forEach(c=>{const o=`<option value="${c.CourseID}">${c.CourseName} (${c.CourseCode})</option>`;sel.insertAdjacentHTML('beforeend',o);cf.insertAdjacentHTML('beforeend',o);}); }
+  loadResults(1);
+});
+
+async function loadResults(page=1){
+  curPage=page;
+  const params={page,limit:20,studentId:document.getElementById('studentFilter').value,courseId:document.getElementById('courseFilter').value,semesterId:document.getElementById('semesterFilter').value};
+  const res=await API.results.list(params);
+  const tbody=document.getElementById('resultsBody');
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><i class="fas fa-chart-bar"></i><h6>No results found</h6></div></td></tr>';document.getElementById('totalBadge').textContent='0';return;}
+  document.getElementById('totalBadge').textContent=res.pagination?.total||res.data.length;
+  document.getElementById('pageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total}`;
+  tbody.innerHTML=res.data.map((r,i)=>{const g=calcGrade(r.CAGrade,r.ExamGrade);return`<tr>
+    <td>${(page-1)*20+i+1}</td>
+    <td style="font-weight:600;font-size:.85rem"><a href="/student-profile.html?id=${r.StudentID}">${r.StudentName}</a></td>
+    <td style="font-size:.8rem">${r.CourseName}<br><span style="font-size:.7rem;color:var(--gray-500)">${r.CourseCode}</span></td>
+    <td style="font-size:.78rem">${r.SemesterName||'—'}</td>
+    <td class="text-center fw-bold">${r.CAGrade}</td>
+    <td class="text-center fw-bold">${r.ExamGrade}</td>
+    <td class="text-center"><span style="font-weight:800;font-size:1rem;color:${gradeColor(g.grade)}">${r.FinalGrade}</span></td>
+    <td class="text-center"><span style="font-weight:700;color:${gradeColor(g.grade)};font-size:.95rem">${g.grade}</span></td>
+    <td class="text-center">
+      <button class="btn btn-sm btn-outline-secondary me-1" onclick="editResult(${r.ResultID},${r.StudentID},${r.CourseID},${r.SemesterID||'null'},${r.CAGrade},${r.ExamGrade})"><i class="fas fa-edit"></i></button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteResult(${r.ResultID})"><i class="fas fa-trash"></i></button>
+    </td></tr>`;}).join('');
+  renderPagination('pagination',page,res.pagination?.totalPages||1,loadResults);
+}
+
+function resetFilters(){['studentFilter','courseFilter','semesterFilter'].forEach(id=>document.getElementById(id).value='');loadResults(1);}
+
+function updatePreview(){
+  const ca=parseFloat(document.getElementById('fCA').value)||0;
+  const ex=parseFloat(document.getElementById('fExam').value)||0;
+  const g=calcGrade(ca,ex);
+  document.getElementById('previewFinal').textContent=g.final;
+  document.getElementById('previewGrade').textContent=g.grade;
+  document.getElementById('previewGrade').style.color=gradeColor(g.grade);
+  document.getElementById('previewBar').style.width=Math.min(g.final,100)+'%';
+  document.getElementById('previewBar').style.background=gradeColor(g.grade);
+}
+
+function openAdd(){document.getElementById('resultId').value='';document.getElementById('resultForm').reset();document.getElementById('fCA').value=0;document.getElementById('fExam').value=0;updatePreview();document.getElementById('modalTitle').textContent='Enter Result';modal.show();}
+
+function editResult(id,sId,cId,semId,ca,exam){
+  document.getElementById('resultId').value=id;
+  document.getElementById('fStudent').value=sId;
+  document.getElementById('fCourse').value=cId;
+  document.getElementById('fSemester').value=semId||'';
+  document.getElementById('fCA').value=ca;
+  document.getElementById('fExam').value=exam;
+  updatePreview();document.getElementById('modalTitle').textContent='Edit Result';modal.show();
+}
+
+async function saveResult(){
+  const btn=document.getElementById('saveBtn');
+  const id=document.getElementById('resultId').value;
+  const data={StudentID:document.getElementById('fStudent').value,CourseID:document.getElementById('fCourse').value,SemesterID:document.getElementById('fSemester').value||null,CAGrade:document.getElementById('fCA').value,ExamGrade:document.getElementById('fExam').value};
+  if(!data.StudentID||!data.CourseID)return showToast('Student and course are required.','warning');
+  setLoading(btn,true);
+  const res=id?await API.results.update(id,data):await API.results.create(data);
+  setLoading(btn,false);
+  if(!res?.success)return showToast(res?.message||'Failed.','error');
+  showToast(res.message||'Saved!','success');modal.hide();loadResults(curPage);
+}
+
+async function deleteResult(id){
+  if(!confirmAction('Delete this result entry?'))return;
+  const res=await API.results.delete(id);
+  if(res?.success){showToast('Result deleted.','success');loadResults(curPage);}
+  else showToast(res?.message||'Failed.','error');
+}
+</script>
+</body>
+</html>

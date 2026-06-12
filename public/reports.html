@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Reports | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-chart-pie me-2" style="color:var(--gold)"></i>Reports & Analytics</h1><p class="page-subtitle">Institutional performance overview</p></div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary" onclick="exportCSV('studentsTable','students-report.csv')"><i class="fas fa-file-csv me-1"></i>Export</button>
+          <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-print me-1"></i>Print</button>
+        </div>
+      </div>
+
+      <!-- Report Tabs -->
+      <ul class="nav nav-pills mb-4 gap-1" id="reportTabs">
+        <li class="nav-item"><button class="nav-link active" onclick="switchTab('students',this)"><i class="fas fa-user-graduate me-1"></i>Students</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="switchTab('payments',this)"><i class="fas fa-money-bill-wave me-1"></i>Payments</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="switchTab('outstanding',this)"><i class="fas fa-exclamation-triangle me-1"></i>Outstanding</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="switchTab('results',this)"><i class="fas fa-chart-bar me-1"></i>Results</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="switchTab('interns',this)"><i class="fas fa-briefcase me-1"></i>Interns</button></li>
+      </ul>
+
+      <!-- STUDENTS REPORT -->
+      <div id="tab-students" class="tab-content-panel">
+        <div class="row g-3 mb-4">
+          <div class="col-md-8">
+            <div class="panel"><div class="panel-body">
+              <h6 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2" style="color:var(--primary)"></i>Enrollment by Program</h6>
+              <canvas id="programChart" height="250"></canvas>
+            </div></div>
+          </div>
+          <div class="col-md-4">
+            <div class="panel"><div class="panel-body">
+              <h6 class="fw-bold mb-3"><i class="fas fa-venus-mars me-2" style="color:var(--gold-dark)"></i>Gender Distribution</h6>
+              <canvas id="genderChart" height="250"></canvas>
+            </div></div>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-head d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-users me-2" style="color:var(--primary)"></i>Student Report</h5>
+            <div class="d-flex gap-2"><select class="form-select form-select-sm" id="sStatusFilter" style="width:140px"><option value="">All Status</option><option>Active</option><option>Graduated</option><option>Suspended</option><option>Withdrawn</option></select><button class="btn btn-sm btn-primary" onclick="loadStudentsReport()"><i class="fas fa-filter"></i></button></div>
+          </div>
+          <div class="table-responsive"><table class="table table-hover" id="studentsTable"><thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>Program</th><th>Gender</th><th>Phone</th><th>Status</th><th>Registered</th></tr></thead><tbody id="studentsBody"><tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr></tbody></table></div>
+          <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="sPageInfo"></small><div id="sPagination"></div></div>
+        </div>
+      </div>
+
+      <!-- PAYMENTS REPORT -->
+      <div id="tab-payments" class="tab-content-panel d-none">
+        <div class="row g-3 mb-4">
+          <div class="col-md-8"><div class="panel"><div class="panel-body"><h6 class="fw-bold mb-3"><i class="fas fa-chart-line me-2" style="color:var(--primary)"></i>Revenue Trend</h6><canvas id="revenueChart" height="250"></canvas></div></div></div>
+          <div class="col-md-4"><div class="panel"><div class="panel-body"><h6 class="fw-bold mb-3"><i class="fas fa-wallet me-2" style="color:var(--gold-dark)"></i>Payment Methods</h6><canvas id="methodChart" height="250"></canvas></div></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-head"><h5><i class="fas fa-receipt me-2" style="color:var(--primary)"></i>Payment Report</h5></div>
+          <div class="table-responsive"><table class="table table-hover" id="paymentsRepTable"><thead><tr><th>#</th><th>Receipt</th><th>Student</th><th>Amount Paid</th><th>Balance</th><th>Method</th><th>Date</th></tr></thead><tbody id="paymentsBody"><tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr></tbody></table></div>
+          <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pPageInfo"></small><div id="pPagination"></div></div>
+        </div>
+      </div>
+
+      <!-- OUTSTANDING FEES -->
+      <div id="tab-outstanding" class="tab-content-panel d-none">
+        <div class="tbl-wrap">
+          <div class="tbl-head d-flex justify-content-between"><h5><i class="fas fa-exclamation-circle me-2 text-danger"></i>Students with Outstanding Balance</h5><button class="btn btn-sm btn-outline-success" onclick="exportCSV('outstandingTable','outstanding.csv')"><i class="fas fa-file-csv me-1"></i>Export</button></div>
+          <div class="table-responsive"><table class="table table-hover" id="outstandingTable"><thead><tr><th>#</th><th>Student</th><th>Program</th><th>Total Fees</th><th>Amount Paid</th><th class="text-danger">Balance Due</th><th>Last Payment</th></tr></thead><tbody id="outstandingBody"><tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- RESULTS REPORT -->
+      <div id="tab-results" class="tab-content-panel d-none">
+        <div class="row g-3 mb-4">
+          <div class="col-md-6"><div class="panel"><div class="panel-body"><h6 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2" style="color:var(--primary)"></i>Grade Distribution</h6><canvas id="gradeChart" height="250"></canvas></div></div></div>
+          <div class="col-md-6"><div class="panel"><div class="panel-body"><h6 class="fw-bold mb-3"><i class="fas fa-graduation-cap me-2" style="color:var(--gold-dark)"></i>Pass / Fail Rate</h6><canvas id="passChart" height="250"></canvas></div></div></div>
+        </div>
+        <div class="tbl-wrap">
+          <div class="tbl-head"><h5><i class="fas fa-chart-bar me-2" style="color:var(--primary)"></i>Academic Results Summary</h5></div>
+          <div class="table-responsive"><table class="table table-hover" id="resultsRepTable"><thead><tr><th>#</th><th>Student</th><th>Course</th><th>CA</th><th>Exam</th><th>Final</th><th>Grade</th></tr></thead><tbody id="resultsBody"><tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- INTERNS REPORT -->
+      <div id="tab-interns" class="tab-content-panel d-none">
+        <div class="tbl-wrap">
+          <div class="tbl-head"><h5><i class="fas fa-briefcase me-2" style="color:var(--primary)"></i>Interns Report</h5></div>
+          <div class="table-responsive"><table class="table table-hover" id="internsRepTable"><thead><tr><th>#</th><th>Intern ID</th><th>Name</th><th>Company</th><th>Department</th><th>Start Date</th><th>End Date</th><th>Status</th></tr></thead><tbody id="internsBody"><tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary"></div></td></tr></tbody></table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+let charts={}, sPage=1, pPage=1;
+
+initLayout().then(()=>{ loadStudentsReport(); loadStudentsCharts(); });
+
+function switchTab(name, btn){
+  document.querySelectorAll('.tab-content-panel').forEach(t=>t.classList.add('d-none'));
+  document.getElementById('tab-'+name).classList.remove('d-none');
+  document.querySelectorAll('#reportTabs .nav-link').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(name==='students'&&!charts.program) loadStudentsCharts();
+  if(name==='payments') loadPaymentsReport();
+  if(name==='outstanding') loadOutstanding();
+  if(name==='results') loadResultsReport();
+  if(name==='interns') loadInternsReport();
+}
+
+function mkChart(id, type, labels, datasets, opts={}){
+  if(charts[id]) charts[id].destroy();
+  const ctx=document.getElementById(id)?.getContext('2d');
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data:{labels,datasets},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:type==='bar'||type==='line'?{y:{beginAtZero:true}}:{},...opts}});
+}
+
+async function loadStudentsReport(page=1){
+  sPage=page;
+  const res=await API.reports.students({page,limit:20,status:document.getElementById('sStatusFilter').value});
+  const tbody=document.getElementById('studentsBody');
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><i class="fas fa-user-graduate"></i><h6>No data</h6></div></td></tr>';return;}
+  document.getElementById('sPageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total||res.data.length}`;
+  tbody.innerHTML=res.data.map((s,i)=>`<tr><td>${(page-1)*20+i+1}</td><td><span class="id-badge">${s.StudentID}</span></td><td style="font-weight:600">${s.FirstName} ${s.LastName}</td><td style="font-size:.82rem">${s.ProgramName||'—'}</td><td>${s.Gender||'—'}</td><td style="font-size:.82rem">${s.Phone||'—'}</td><td>${statusBadge(s.Status)}</td><td style="font-size:.78rem">${fmtDate(s.RegistrationDate)}</td></tr>`).join('');
+  renderPagination('sPagination',page,res.pagination?.totalPages||1,loadStudentsReport);
+}
+
+async function loadStudentsCharts(){
+  const [pDist,gDist]=await Promise.all([API.dashboard.programDist(),API.dashboard.genderDist()]);
+  if(pDist?.data){
+    const labels=pDist.data.map(p=>p.ProgramName?.split(' ').slice(0,2).join(' ')||'—');
+    const vals=pDist.data.map(p=>p.count||p.total||0);
+    mkChart('programChart','bar',labels,[{label:'Students',data:vals,backgroundColor:'rgba(10,77,140,0.75)',borderRadius:6}]);
+  }
+  if(gDist?.data){
+    mkChart('genderChart','doughnut',gDist.data.map(g=>g.Gender||'Unknown'),
+      [{data:gDist.data.map(g=>g.count||0),backgroundColor:['#0A4D8C','#D4AF37','#6c757d']}]);
+  }
+}
+
+async function loadPaymentsReport(page=1){
+  pPage=page;
+  const [res,trend]=await Promise.all([API.reports.payments({page,limit:20}),API.dashboard.revenueTrend()]);
+  if(res?.data){
+    const tbody=document.getElementById('paymentsBody');
+    document.getElementById('pPageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total||res.data.length}`;
+    tbody.innerHTML=res.data.map((p,i)=>`<tr><td>${(page-1)*20+i+1}</td><td><span class="id-badge">${p.ReceiptNumber||'—'}</span></td><td style="font-weight:600">${p.StudentName}</td><td style="color:#198754;font-weight:700">${fmtCurrency(p.AmountPaid)}</td><td style="color:#dc3545">${fmtCurrency(p.Balance)}</td><td><span class="badge bg-secondary">${p.PaymentMethod}</span></td><td style="font-size:.78rem">${fmtDate(p.PaymentDate)}</td></tr>`).join('');
+    renderPagination('pPagination',page,res.pagination?.totalPages||1,loadPaymentsReport);
+    // Method breakdown
+    const methods={};res.data.forEach(p=>{methods[p.PaymentMethod]=(methods[p.PaymentMethod]||0)+1;});
+    mkChart('methodChart','pie',Object.keys(methods),[{data:Object.values(methods),backgroundColor:['#0A4D8C','#D4AF37','#198754','#6c757d']}]);
+  }
+  if(trend?.data){
+    mkChart('revenueChart','line',trend.data.map(r=>r.month||r.label),[{label:'Revenue (FCFA)',data:trend.data.map(r=>r.total||r.revenue||0),borderColor:'#0A4D8C',backgroundColor:'rgba(10,77,140,.1)',fill:true,tension:.4}]);
+  }
+}
+
+async function loadOutstanding(){
+  const res=await API.reports.outstanding();
+  const tbody=document.getElementById('outstandingBody');
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="fas fa-check-circle text-success"></i><h6>No outstanding balances!</h6></div></td></tr>';return;}
+  tbody.innerHTML=res.data.map((s,i)=>`<tr><td>${i+1}</td><td style="font-weight:600">${s.StudentName}</td><td style="font-size:.82rem">${s.ProgramName||'—'}</td><td>${fmtCurrency(s.TotalFees)}</td><td style="color:#198754;font-weight:600">${fmtCurrency(s.TotalPaid)}</td><td style="color:#dc3545;font-weight:800">${fmtCurrency(s.Balance)}</td><td style="font-size:.78rem">${fmtDate(s.LastPayment)}</td></tr>`).join('');
+}
+
+async function loadResultsReport(){
+  const res=await API.reports.results({limit:100});
+  const tbody=document.getElementById('resultsBody');
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="fas fa-chart-bar"></i><h6>No results data</h6></div></td></tr>';return;}
+  const grades={};
+  res.data.forEach(r=>{const g=calcGrade(r.CAGrade,r.ExamGrade).grade;grades[g]=(grades[g]||0)+1;});
+  const gradeOrder=['A+','A','B+','B','C+','C','D','F'];
+  const gLabels=gradeOrder.filter(g=>grades[g]);
+  const gColors={'A+':'#198754','A':'#20c997','B+':'#0A4D8C','B':'#0dcaf0','C+':'#6c757d','C':'#adb5bd','D':'#ffc107','F':'#dc3545'};
+  mkChart('gradeChart','bar',gLabels,[{label:'Students',data:gLabels.map(g=>grades[g]||0),backgroundColor:gLabels.map(g=>gColors[g]||'#6c757d'),borderRadius:6}]);
+  const passing=res.data.filter(r=>calcGrade(r.CAGrade,r.ExamGrade).grade!=='F').length;
+  mkChart('passChart','doughnut',['Passing','Failing'],[{data:[passing,res.data.length-passing],backgroundColor:['#198754','#dc3545']}]);
+  tbody.innerHTML=res.data.map((r,i)=>{const g=calcGrade(r.CAGrade,r.ExamGrade);return`<tr><td>${i+1}</td><td style="font-weight:600">${r.StudentName}</td><td style="font-size:.82rem">${r.CourseName}</td><td class="text-center">${r.CAGrade}</td><td class="text-center">${r.ExamGrade}</td><td class="text-center fw-bold" style="color:${gradeColor(g.grade)}">${r.FinalGrade}</td><td class="text-center fw-bold" style="color:${gradeColor(g.grade)}">${g.grade}</td></tr>`;}).join('');
+}
+
+async function loadInternsReport(){
+  const res=await API.reports.interns();
+  const tbody=document.getElementById('internsBody');
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><i class="fas fa-briefcase"></i><h6>No intern data</h6></div></td></tr>';return;}
+  tbody.innerHTML=res.data.map((n,i)=>`<tr><td>${i+1}</td><td><span class="id-badge">${n.InternID}</span></td><td style="font-weight:600">${n.FirstName} ${n.LastName}</td><td>${n.CompanyName||'—'}</td><td style="font-size:.82rem">${n.Department||'—'}</td><td style="font-size:.78rem">${fmtDate(n.StartDate)}</td><td style="font-size:.78rem">${fmtDate(n.EndDate)}</td><td>${statusBadge(n.Status)}</td></tr>`).join('');
+}
+</script>
+</body>
+</html>

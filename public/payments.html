@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Payments | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-money-bill-wave me-2" style="color:var(--gold)"></i>Payments</h1><p class="page-subtitle">Track all student fee payments</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Record Payment</button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="row g-2 mb-3">
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(25,135,84,.1)"><i class="fas fa-check-circle" style="color:#198754"></i></div><div class="stat-value text-success" id="totalPaid">—</div><div class="stat-label">Total Collected</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(220,53,69,.1)"><i class="fas fa-exclamation-triangle" style="color:#dc3545"></i></div><div class="stat-value text-danger" id="totalBalance">—</div><div class="stat-label">Total Outstanding</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(10,77,140,.1)"><i class="fas fa-receipt" style="color:var(--primary)"></i></div><div class="stat-value" id="transCount">—</div><div class="stat-label">Transactions</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-mobile-alt" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="mmCount">—</div><div class="stat-label">Mobile Money</div></div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
+        <div class="col-md-4"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="searchInput" placeholder="Search student, receipt…"></div></div>
+        <div class="col-md-2"><select class="form-select" id="methodFilter"><option value="">All Methods</option><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadPayments(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('paymentsTable','payments.csv')"><i class="fas fa-file-csv"></i></button></div>
+      </div></div></div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>Payment Records <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="paymentsTable">
+            <thead><tr><th>Receipt #</th><th>Student</th><th>Payer</th><th>Amount Paid</th><th>Balance</th><th>Method</th><th>Date</th><th class="text-center">Actions</th></tr></thead>
+            <tbody id="paymentsBody"><tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Payment Modal -->
+<div class="modal fade" id="payModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Record Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="payForm">
+        <input type="hidden" id="payId">
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Student *</label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
+          <div class="col-md-6"><label class="form-label">Receipt Number</label><input type="text" class="form-control" id="fReceipt" placeholder="Auto-generated if blank"></div>
+          <div class="col-md-6"><label class="form-label">Payer Name</label><input type="text" class="form-control" id="fPayer"></div>
+          <div class="col-md-6"><label class="form-label">Amount Paid (FCFA) *</label><input type="number" class="form-control" id="fAmount" min="0" step="100" required></div>
+          <div class="col-md-6"><label class="form-label">Balance Remaining (FCFA)</label><input type="number" class="form-control" id="fBalance" min="0" step="100" value="0"></div>
+          <div class="col-md-6"><label class="form-label">Payment Date *</label><input type="date" class="form-control" id="fDate" required></div>
+          <div class="col-md-6"><label class="form-label">Method</label><select class="form-select" id="fMethod"><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success fw-bold" id="saveBtn" onclick="savePayment()"><i class="fas fa-save me-2"></i>Save</button></div>
+  </div></div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="receiptModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Payment Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body"><div id="receiptContent"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button class="btn btn-primary" onclick="printElement('receiptContent')"><i class="fas fa-print me-1"></i>Print</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+let curPage=1;
+const modal=new bootstrap.Modal(document.getElementById('payModal'));
+const receiptModal=new bootstrap.Modal(document.getElementById('receiptModal'));
+
+initLayout().then(async()=>{
+  const students=await API.students.list({limit:1000});
+  if(students?.data){
+    const sel=document.getElementById('fStudent');
+    students.data.forEach(s=>sel.insertAdjacentHTML('beforeend',`<option value="${s.StudentID}">${s.FirstName} ${s.LastName} (ID: ${s.StudentID})</option>`));
+  }
+  loadPayments(1);
+});
+
+async function loadPayments(page=1){
+  curPage=page;
+  const params={page,limit:20,search:document.getElementById('searchInput').value.trim(),method:document.getElementById('methodFilter').value};
+  const res=await API.payments.list(params);
+  const tbody=document.getElementById('paymentsBody');
+  if(res?.totals){
+    document.getElementById('totalPaid').textContent=fmtCurrency(res.totals.totalPaid);
+    document.getElementById('totalBalance').textContent=fmtCurrency(res.totals.totalBalance);
+    document.getElementById('transCount').textContent=res.pagination?.total||0;
+    document.getElementById('mmCount').textContent=(res.data||[]).filter(p=>p.PaymentMethod==='Mobile Money').length;
+  }
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><i class="fas fa-money-bill"></i><h6>No payments found</h6></div></td></tr>';return;}
+  document.getElementById('totalBadge').textContent=res.pagination?.total||res.data.length;
+  document.getElementById('pageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total} records`;
+  tbody.innerHTML=res.data.map(p=>`<tr>
+    <td><span class="id-badge">${p.ReceiptNumber}</span></td>
+    <td><a href="/student-profile.html?id=${p.StudentID}" style="font-weight:600">${p.StudentName}</a></td>
+    <td style="font-size:.82rem">${p.PayerName||'—'}</td>
+    <td style="font-weight:700;color:#198754">${fmtCurrency(p.AmountPaid)}</td>
+    <td style="color:#dc3545">${fmtCurrency(p.Balance)}</td>
+    <td><span class="badge bg-secondary">${p.PaymentMethod}</span></td>
+    <td style="font-size:.78rem">${fmtDate(p.PaymentDate)}</td>
+    <td class="text-center">
+      <button class="btn btn-sm btn-outline-primary me-1" onclick="viewReceipt(${p.PaymentID})" title="View Receipt"><i class="fas fa-receipt"></i></button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${p.PaymentID},'${p.ReceiptNumber}')" title="Delete"><i class="fas fa-trash"></i></button>
+    </td></tr>`).join('');
+  renderPagination('pagination',page,res.pagination?.totalPages||1,loadPayments);
+}
+
+function resetFilters(){document.getElementById('searchInput').value='';document.getElementById('methodFilter').value='';loadPayments(1);}
+
+async function openAdd(){
+  document.getElementById('payId').value='';document.getElementById('payForm').reset();
+  document.getElementById('fDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('modalTitle').textContent='Record Payment';modal.show();
+}
+
+async function savePayment(){
+  const btn=document.getElementById('saveBtn');
+  const data={StudentID:document.getElementById('fStudent').value,ReceiptNumber:document.getElementById('fReceipt').value||null,PayerName:document.getElementById('fPayer').value,AmountPaid:document.getElementById('fAmount').value,Balance:document.getElementById('fBalance').value||0,PaymentDate:document.getElementById('fDate').value,PaymentMethod:document.getElementById('fMethod').value};
+  if(!data.StudentID||!data.AmountPaid)return showToast('Student and amount are required.','warning');
+  setLoading(btn,true);
+  const res=await API.payments.create(data);
+  setLoading(btn,false);
+  if(!res?.success)return showToast(res?.message||'Failed.','error');
+  showToast('Payment recorded!','success');modal.hide();loadPayments(curPage);
+}
+
+async function viewReceipt(id){
+  const res=await API.payments.get(id);
+  if(!res?.data)return showToast('Receipt not found.','error');
+  const p=res.data;
+  document.getElementById('receiptContent').innerHTML=`
+  <div class="receipt-card">
+    <div class="receipt-header"><div style="font-size:1.4rem;font-weight:900;margin-bottom:.3rem">ESC</div><div style="font-size:.95rem;font-weight:700">Eschosys Technologies</div><div style="font-size:.75rem;opacity:.8">Accacias, Yaoundé, Cameroon</div><div style="font-size:.7rem;opacity:.7;margin-top:.5rem">OFFICIAL PAYMENT RECEIPT</div></div>
+    <div class="receipt-body">
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Receipt #</span><span style="font-weight:700">${p.ReceiptNumber}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Student</span><span style="font-weight:600">${p.StudentName}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Payer</span><span>${p.PayerName||'—'}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Date</span><span>${fmtDate(p.PaymentDate)}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Method</span><span>${p.PaymentMethod}</span></div>
+      <div class="r-row" style="margin-top:.5rem;padding-top:.5rem;border-top:2px solid var(--primary)"><span style="font-weight:700;font-size:.95rem">Amount Paid</span><span style="font-weight:800;font-size:1.2rem;color:#198754">${fmtCurrency(p.AmountPaid)}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:#dc3545">Balance Remaining</span><span style="font-weight:700;color:#dc3545">${fmtCurrency(p.Balance)}</span></div>
+    </div>
+    <div style="padding:.8rem;text-align:center;font-size:.72rem;color:var(--gray-500);border-top:1px dashed var(--gray-200)">This receipt is valid and officially issued by Eschosys Technologies</div>
+  </div>`;
+  receiptModal.show();
+}
+
+async function deletePayment(id,receipt){
+  if(!confirmAction(`Delete receipt "${receipt}"?`))return;
+  const res=await API.payments.delete(id);
+  if(res?.success){showToast('Payment deleted.','success');loadPayments(curPage);}
+  else showToast(res?.message||'Failed.','error');
+}
+document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')loadPayments(1);});
+</script>
+</body>
+</html>

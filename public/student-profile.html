@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Student Profile | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div>
+          <nav aria-label="breadcrumb"><ol class="breadcrumb" style="font-size:.8rem"><li class="breadcrumb-item"><a href="/students.html">Students</a></li><li class="breadcrumb-item active" id="breadName">Profile</li></ol></nav>
+          <h1 class="page-title" id="profileTitle">Student Profile</h1>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary" onclick="history.back()"><i class="fas fa-arrow-left me-1"></i>Back</button>
+          <button class="btn btn-primary" onclick="printElement('printArea')"><i class="fas fa-print me-1"></i>Print</button>
+        </div>
+      </div>
+
+      <div id="profileContent">
+        <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Record Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="paymentForm">
+        <input type="hidden" id="pStudentId">
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Receipt Number</label><input type="text" class="form-control" id="pReceipt" placeholder="Auto-generated if blank"></div>
+          <div class="col-12"><label class="form-label">Payer Name</label><input type="text" class="form-control" id="pPayer"></div>
+          <div class="col-md-6"><label class="form-label">Amount Paid (FCFA) *</label><input type="number" class="form-control" id="pAmount" min="0" required></div>
+          <div class="col-md-6"><label class="form-label">Balance (FCFA)</label><input type="number" class="form-control" id="pBalance" min="0" value="0"></div>
+          <div class="col-md-6"><label class="form-label">Payment Date *</label><input type="date" class="form-control" id="pDate" required></div>
+          <div class="col-md-6"><label class="form-label">Payment Method</label><select class="form-select" id="pMethod"><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success fw-bold" id="payBtn" onclick="savePayment()"><i class="fas fa-check me-1"></i>Record Payment</button></div>
+  </div></div>
+</div>
+
+<!-- Upload File Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title">Upload Document</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-3"><label class="form-label">Document Type</label>
+        <select class="form-select" id="docType">
+          <option value="passport_photo">Passport Photo</option><option value="national_id">National ID</option>
+          <option value="birth_certificate">Birth Certificate</option><option value="academic_certificate">Academic Certificate</option>
+          <option value="admission_doc">Admission Document</option><option value="other">Other</option>
+        </select>
+      </div>
+      <div class="mb-3"><label class="form-label">File (max 5MB)</label><input type="file" class="form-control" id="docFile" accept="image/*,.pdf,.doc,.docx"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="uploadBtn" onclick="uploadDocument()"><i class="fas fa-upload me-1"></i>Upload</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+let studentData = null;
+const payModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+const upModal  = new bootstrap.Modal(document.getElementById('uploadModal'));
+
+initLayout().then(() => {
+  const id = getParam('id');
+  if (!id) { window.location.href = '/students.html'; return; }
+  loadProfile(id);
+});
+
+async function loadProfile(id) {
+  const res = await API.students.get(id);
+  if (!res?.data) { document.getElementById('profileContent').innerHTML = '<div class="alert alert-danger">Student not found.</div>'; return; }
+  studentData = res.data;
+  renderProfile(studentData);
+}
+
+function renderProfile(s) {
+  document.getElementById('profileTitle').textContent = `${s.FirstName} ${s.LastName}`;
+  document.getElementById('breadName').textContent     = `${s.FirstName} ${s.LastName}`;
+  document.title = `${s.FirstName} ${s.LastName} | ESIMS`;
+
+  const enrList  = s.enrollments?.map(e => `<div class="info-row"><span class="info-label">Program</span><span class="info-value">${e.ProgramName}</span></div><div class="info-row"><span class="info-label">Semester</span><span class="info-value">${e.SemesterName||'—'}</span></div><div class="info-row"><span class="info-label">Status</span><span class="info-value">${statusBadge(e.Status)}</span></div><div class="info-row"><span class="info-label">Enrolled</span><span class="info-value">${fmtDate(e.EnrollmentDate)}</span></div>`) .join('<hr>') || '<p class="text-muted mb-0">Not enrolled in any program.</p>';
+  const payRows  = s.payments?.map(p => `<tr><td><span class="id-badge" style="font-size:.7rem">${p.ReceiptNumber}</span></td><td style="font-size:.8rem">${p.PayerName||'—'}</td><td style="font-weight:700;color:#198754">${fmtCurrency(p.AmountPaid)}</td><td style="color:#dc3545">${fmtCurrency(p.Balance)}</td><td style="font-size:.78rem">${p.PaymentMethod}</td><td style="font-size:.78rem">${fmtDate(p.PaymentDate)}</td></tr>`).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">No payments recorded</td></tr>';
+  const resRows  = s.results?.map(r => `<tr><td style="font-size:.8rem">${r.CourseName}</td><td style="font-size:.78rem">${r.CourseCode}</td><td>${r.SemesterName||'—'}</td><td class="text-center fw-bold">${r.CAGrade}</td><td class="text-center fw-bold">${r.ExamGrade}</td><td class="text-center"><span style="font-weight:800;color:${gradeColor(calcGrade(r.CAGrade,r.ExamGrade).grade)}">${r.FinalGrade}</span></td><td class="text-center"><span style="font-weight:700;color:${gradeColor(calcGrade(r.CAGrade,r.ExamGrade).grade)}">${calcGrade(r.CAGrade,r.ExamGrade).grade}</span></td></tr>`).join('') || '<tr><td colspan="7" class="text-center text-muted py-3">No results available</td></tr>';
+  const certRows = s.certificates?.map(c => `<tr><td><span class="id-badge" style="font-size:.7rem">${c.CertificateNumber}</span></td><td style="font-size:.8rem">${c.ProgramName||'—'}</td><td>${fmtDate(c.IssueDate)}</td><td>${statusBadge(c.Status)}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">No certificates issued</td></tr>';
+  const fileCards = s.files?.map(f => `<div class="col-md-4 col-6"><div class="doc-card uploaded" onclick="window.open('/${f.FilePath}','_blank')"><i class="fas ${f.MimeType?.includes('image')?'fa-file-image':'fa-file-pdf'}"></i><div class="doc-card-name" style="font-size:.78rem;font-weight:600">${f.DocumentType.replace(/_/g,' ')}</div><div class="doc-card-size" style="font-size:.7rem;color:var(--gray-500)">${f.FileName}</div><button class="btn btn-sm btn-outline-danger mt-2 no-print" onclick="event.stopPropagation();deleteFile(${f.FileID})" style="font-size:.72rem;padding:.15rem .4rem"><i class="fas fa-trash"></i></button></div></div>`).join('') || '';
+
+  document.getElementById('profileContent').innerHTML = `
+  <div id="printArea">
+  <div class="row g-3">
+    <!-- Left: Personal Info -->
+    <div class="col-lg-4">
+      <div class="panel mb-3">
+        <div class="panel-body text-center">
+          <img src="${avatarUrl(s.FirstName+' '+s.LastName)}" class="profile-avatar mb-3" alt="avatar">
+          <h5 style="font-weight:800;margin-bottom:.2rem">${s.FirstName} ${s.LastName}</h5>
+          <div class="id-badge mb-2">ID: ${s.StudentID}</div>
+          <div class="mb-2">${statusBadge('Active')}</div>
+        </div>
+      </div>
+      <div class="panel mb-3">
+        <div class="panel-header"><span class="panel-title"><i class="fas fa-user me-2" style="color:var(--primary)"></i>Personal Info</span></div>
+        <div class="panel-body">
+          <div class="info-row"><span class="info-label">Gender</span><span class="info-value">${s.Gender||'—'}</span></div>
+          <div class="info-row"><span class="info-label">Date of Birth</span><span class="info-value">${fmtDate(s.DateOfBirth)}</span></div>
+          <div class="info-row"><span class="info-label">Phone</span><span class="info-value">${s.PhoneNumber||'—'}</span></div>
+          <div class="info-row"><span class="info-label">Email</span><span class="info-value">${s.Email||'—'}</span></div>
+          <div class="info-row"><span class="info-label">National ID</span><span class="info-value">${s.NationalIDNumber||'—'}</span></div>
+          <div class="info-row"><span class="info-label">Address</span><span class="info-value">${s.Address||'—'}</span></div>
+          <div class="info-row"><span class="info-label">Reg. Date</span><span class="info-value">${fmtDate(s.RegistrationDate)}</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title"><i class="fas fa-people-arrows me-2" style="color:var(--gold-dark)"></i>Guardian</span></div>
+        <div class="panel-body">
+          <div class="info-row"><span class="info-label">Name</span><span class="info-value">${s.GuardianName||'—'}</span></div>
+          <div class="info-row"><span class="info-label">Contact</span><span class="info-value">${s.GuardianContact||'—'}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Academic Tabs -->
+    <div class="col-lg-8">
+      <!-- Financial Summary -->
+      <div class="row g-2 mb-3">
+        <div class="col-4"><div class="stat-card text-center" style="padding:.9rem"><div style="font-size:1.2rem;font-weight:800;color:#198754">${fmtCurrency(s.totalPaid)}</div><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500)">Total Paid</div></div></div>
+        <div class="col-4"><div class="stat-card text-center" style="padding:.9rem"><div style="font-size:1.2rem;font-weight:800;color:#dc3545">${fmtCurrency(s.totalBalance)}</div><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500)">Balance Due</div></div></div>
+        <div class="col-4"><div class="stat-card text-center" style="padding:.9rem"><div style="font-size:1.2rem;font-weight:800;color:var(--primary)">${s.results?.length||0}</div><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-500)">Courses</div></div></div>
+      </div>
+
+      <ul class="nav nav-tabs mb-3" id="profileTabs">
+        <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabEnroll"><i class="fas fa-clipboard-list me-1"></i>Enrollment</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabPayments"><i class="fas fa-money-bill me-1"></i>Payments</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabResults"><i class="fas fa-chart-bar me-1"></i>Results</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCerts"><i class="fas fa-certificate me-1"></i>Certificates</a></li>
+        <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabFiles"><i class="fas fa-folder me-1"></i>Files</a></li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="tabEnroll"><div class="panel"><div class="panel-body">${enrList}</div></div></div>
+        <div class="tab-pane fade" id="tabPayments">
+          <div class="tbl-wrap">
+            <div class="tbl-head"><h5>Payment History</h5><button class="btn btn-sm btn-success no-print" onclick="openPayment()"><i class="fas fa-plus me-1"></i>Record Payment</button></div>
+            <div class="table-responsive"><table class="table table-hover"><thead><tr><th>Receipt</th><th>Payer</th><th>Amount</th><th>Balance</th><th>Method</th><th>Date</th></tr></thead><tbody>${payRows}</tbody></table></div>
+          </div>
+        </div>
+        <div class="tab-pane fade" id="tabResults">
+          <div class="tbl-wrap"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Course</th><th>Code</th><th>Semester</th><th class="text-center">CA (30%)</th><th class="text-center">Exam (70%)</th><th class="text-center">Final</th><th class="text-center">Grade</th></tr></thead><tbody>${resRows}</tbody></table></div></div>
+        </div>
+        <div class="tab-pane fade" id="tabCerts">
+          <div class="tbl-wrap"><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Certificate #</th><th>Program</th><th>Issue Date</th><th>Status</th></tr></thead><tbody>${certRows}</tbody></table></div></div>
+        </div>
+        <div class="tab-pane fade" id="tabFiles">
+          <div class="panel"><div class="panel-header"><span class="panel-title">Documents</span><button class="btn btn-sm btn-primary no-print" onclick="upModal.show()"><i class="fas fa-upload me-1"></i>Upload</button></div>
+          <div class="panel-body"><div class="row g-3" id="fileGrid">${fileCards || '<div class="col-12"><div class="empty-state"><i class="fas fa-folder-open"></i><h6>No documents uploaded</h6></div></div>'}</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>`;
+}
+
+function openPayment() {
+  document.getElementById('pStudentId').value = studentData.StudentID;
+  document.getElementById('pDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('pAmount').value=''; document.getElementById('pBalance').value='0'; document.getElementById('pReceipt').value=''; document.getElementById('pPayer').value='';
+  payModal.show();
+}
+
+async function savePayment() {
+  const btn = document.getElementById('payBtn');
+  const data = { StudentID: document.getElementById('pStudentId').value, ReceiptNumber: document.getElementById('pReceipt').value||null, PayerName: document.getElementById('pPayer').value, AmountPaid: document.getElementById('pAmount').value, Balance: document.getElementById('pBalance').value||0, PaymentDate: document.getElementById('pDate').value, PaymentMethod: document.getElementById('pMethod').value };
+  if (!data.AmountPaid) return showToast('Amount is required.','warning');
+  setLoading(btn,true);
+  const res = await API.payments.create(data);
+  setLoading(btn,false);
+  if (!res?.success) return showToast(res?.message||'Failed.','error');
+  showToast('Payment recorded!','success');
+  payModal.hide(); loadProfile(studentData.StudentID);
+}
+
+async function uploadDocument() {
+  const btn = document.getElementById('uploadBtn');
+  const file = document.getElementById('docFile').files[0];
+  if (!file) return showToast('Please select a file.','warning');
+  const fd = new FormData(); fd.append('file', file); fd.append('studentId', studentData.StudentID); fd.append('documentType', document.getElementById('docType').value);
+  setLoading(btn,true);
+  const res = await API.files.upload('/files/upload', fd);
+  setLoading(btn,false);
+  if (!res?.success) return showToast(res?.message||'Upload failed.','error');
+  showToast('Document uploaded!','success'); upModal.hide(); loadProfile(studentData.StudentID);
+}
+
+async function deleteFile(id) {
+  if (!confirmAction('Delete this document?')) return;
+  const res = await API.files.delete(id);
+  if (res?.success) { showToast('File deleted.','success'); loadProfile(studentData.StudentID); }
+  else showToast(res?.message||'Failed.','error');
+}
+</script>
+</body>
+</html>

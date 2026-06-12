@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Enrollment | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-clipboard-list me-2" style="color:var(--gold)"></i>Enrollment</h1><p class="page-subtitle">Manage student program enrollments</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Enroll Student</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
+        <div class="col-md-3"><label class="form-label mb-1" style="font-size:.78rem">Student</label><select class="form-select" id="studentFilter"><option value="">All Students</option></select></div>
+        <div class="col-md-3"><label class="form-label mb-1" style="font-size:.78rem">Program</label><select class="form-select" id="programFilter"><option value="">All Programs</option></select></div>
+        <div class="col-md-2"><label class="form-label mb-1" style="font-size:.78rem">Status</label><select class="form-select" id="statusFilter"><option value="">All Status</option><option>Active</option><option>Completed</option><option>Dropped</option><option>Suspended</option></select></div>
+        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadEnrollments(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('enrollTable','enrollments.csv')"><i class="fas fa-file-csv"></i></button></div>
+      </div></div></div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>Enrollments <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="enrollTable">
+            <thead><tr><th>#</th><th>Student</th><th>Program</th><th>Semester</th><th>Enrolled Date</th><th class="text-center">Status</th><th class="text-center">Actions</th></tr></thead>
+            <tbody id="enrollBody"><tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Enroll Modal -->
+<div class="modal fade" id="enrollModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Enroll Student</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="enrollForm">
+        <input type="hidden" id="enrollId">
+        <div class="row g-3">
+          <div class="col-12"><label class="form-label">Student *</label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
+          <div class="col-12"><label class="form-label">Program *</label><select class="form-select" id="fProgram" required><option value="">Select program…</option></select></div>
+          <div class="col-md-6"><label class="form-label">Semester</label><select class="form-select" id="fSemester"><option value="">Select semester…</option></select></div>
+          <div class="col-md-6"><label class="form-label">Status</label><select class="form-select" id="fStatus"><option>Active</option><option>Completed</option><option>Dropped</option><option>Suspended</option></select></div>
+          <div class="col-md-6"><label class="form-label">Enrollment Date</label><input type="date" class="form-control" id="fDate"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="saveBtn" onclick="saveEnrollment()"><i class="fas fa-save me-2"></i>Save</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+let curPage=1;
+const modal=new bootstrap.Modal(document.getElementById('enrollModal'));
+
+initLayout().then(async()=>{
+  const [students,programs]=await Promise.all([API.students.list({limit:1000}),API.programs.list()]);
+  if(students?.data){
+    const sf=document.getElementById('studentFilter'),fst=document.getElementById('fStudent');
+    students.data.forEach(s=>{const o=`<option value="${s.StudentID}">${s.FirstName} ${s.LastName} (${s.StudentID})</option>`;sf.insertAdjacentHTML('beforeend',o);fst.insertAdjacentHTML('beforeend',o);});
+  }
+  if(programs?.data?.length){
+    const pf=document.getElementById('programFilter'),fp=document.getElementById('fProgram');
+    programs.data.forEach(p=>{const o=`<option value="${p.ProgramID}">${p.ProgramName}</option>`;pf.insertAdjacentHTML('beforeend',o);fp.insertAdjacentHTML('beforeend',o);});
+  }
+  loadEnrollments(1);
+});
+
+async function loadEnrollments(page=1){
+  curPage=page;
+  const params={page,limit:20,studentId:document.getElementById('studentFilter').value,programId:document.getElementById('programFilter').value,status:document.getElementById('statusFilter').value};
+  const res=await API.enrollment.list(params);
+  const tbody=document.getElementById('enrollBody');
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="fas fa-clipboard-list"></i><h6>No enrollments found</h6></div></td></tr>';document.getElementById('totalBadge').textContent='0';return;}
+  document.getElementById('totalBadge').textContent=res.pagination?.total||res.data.length;
+  document.getElementById('pageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total||res.data.length} records`;
+  tbody.innerHTML=res.data.map((e,i)=>`<tr>
+    <td>${(page-1)*20+i+1}</td>
+    <td><a href="/student-profile.html?id=${e.StudentID}" style="font-weight:600">${e.StudentName}</a></td>
+    <td style="font-size:.82rem">${e.ProgramName||'—'}</td>
+    <td style="font-size:.78rem">${e.SemesterName||'—'}</td>
+    <td style="font-size:.78rem">${fmtDate(e.EnrollmentDate)}</td>
+    <td class="text-center">${statusBadge(e.Status)}</td>
+    <td class="text-center">
+      <button class="btn btn-sm btn-outline-secondary me-1" onclick="editEnrollment(${e.EnrollmentID},${e.StudentID},${e.ProgramID||'null'},${e.SemesterID||'null'},'${e.Status}','${e.EnrollmentDate?.split('T')[0]||''}')"><i class="fas fa-edit"></i></button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteEnrollment(${e.EnrollmentID})"><i class="fas fa-trash"></i></button>
+    </td></tr>`).join('');
+  renderPagination('pagination',page,res.pagination?.totalPages||1,loadEnrollments);
+}
+
+function resetFilters(){['studentFilter','programFilter','statusFilter'].forEach(id=>document.getElementById(id).value='');loadEnrollments(1);}
+
+function openAdd(){
+  document.getElementById('enrollId').value='';document.getElementById('enrollForm').reset();
+  document.getElementById('fDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('modalTitle').textContent='Enroll Student';modal.show();
+}
+
+function editEnrollment(id,sId,pId,semId,status,date){
+  document.getElementById('enrollId').value=id;
+  document.getElementById('fStudent').value=sId;
+  document.getElementById('fProgram').value=pId||'';
+  document.getElementById('fSemester').value=semId||'';
+  document.getElementById('fStatus').value=status||'Active';
+  document.getElementById('fDate').value=date||'';
+  document.getElementById('modalTitle').textContent='Edit Enrollment';modal.show();
+}
+
+async function saveEnrollment(){
+  const btn=document.getElementById('saveBtn');
+  const id=document.getElementById('enrollId').value;
+  const data={StudentID:document.getElementById('fStudent').value,ProgramID:document.getElementById('fProgram').value||null,SemesterID:document.getElementById('fSemester').value||null,Status:document.getElementById('fStatus').value,EnrollmentDate:document.getElementById('fDate').value||null};
+  if(!data.StudentID||!data.ProgramID)return showToast('Student and program are required.','warning');
+  setLoading(btn,true);
+  const res=id?await API.enrollment.update(id,data):await API.enrollment.create(data);
+  setLoading(btn,false);
+  if(!res?.success)return showToast(res?.message||'Failed.','error');
+  showToast(res.message||'Saved!','success');modal.hide();loadEnrollments(curPage);
+}
+
+async function deleteEnrollment(id){
+  if(!confirmAction('Remove this enrollment record?'))return;
+  const res=await API.enrollment.delete(id);
+  if(res?.success){showToast('Enrollment removed.','success');loadEnrollments(curPage);}
+  else showToast(res?.message||'Failed.','error');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Courses | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-chalkboard me-2" style="color:var(--gold)"></i>Courses</h1><p class="page-subtitle">Manage course catalog</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Add Course</button>
+      </div>
+
+      <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2"><div class="col-md-6"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="tableSearch" placeholder="Search courses…" oninput="initTableSearch('tableSearch','coursesTable')"></div></div><div class="col-md-3"><button class="btn btn-outline-success" onclick="exportCSV('coursesTable','courses.csv')"><i class="fas fa-file-csv me-1"></i>Export</button></div></div></div></div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>All Courses <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="coursesTable">
+            <thead><tr><th>#</th><th>Code</th><th>Course Name</th><th class="text-center">Credits</th><th>Programs</th><th>Description</th><th class="text-center">Actions</th></tr></thead>
+            <tbody id="coursesBody"><tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="courseModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Add Course</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="courseForm">
+        <input type="hidden" id="courseId">
+        <div class="row g-3">
+          <div class="col-md-6"><label class="form-label">Course Code *</label><input type="text" class="form-control" id="fCode" required placeholder="e.g. CS101"></div>
+          <div class="col-md-6"><label class="form-label">Credit Value</label><input type="number" class="form-control" id="fCredits" min="1" max="10" value="3"></div>
+          <div class="col-12"><label class="form-label">Course Name *</label><input type="text" class="form-control" id="fName" required placeholder="e.g. Introduction to Programming"></div>
+          <div class="col-12"><label class="form-label">Description</label><textarea class="form-control" id="fDesc" rows="3" placeholder="Course description…"></textarea></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="saveBtn" onclick="saveCourse()"><i class="fas fa-save me-2"></i>Save</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+const modal = new bootstrap.Modal(document.getElementById('courseModal'));
+initLayout().then(() => loadCourses());
+
+async function loadCourses() {
+  const res = await API.courses.list();
+  const tbody = document.getElementById('coursesBody');
+  if (!res?.data?.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="fas fa-chalkboard"></i><h6>No courses found</h6></div></td></tr>'; return; }
+  document.getElementById('totalBadge').textContent = res.data.length;
+  tbody.innerHTML = res.data.map((c, i) => `<tr>
+    <td>${i+1}</td>
+    <td><span class="id-badge">${c.CourseCode}</span></td>
+    <td style="font-weight:600">${c.CourseName}</td>
+    <td class="text-center"><span class="badge bg-info text-dark">${c.CreditValue} cr</span></td>
+    <td style="font-size:.78rem;color:var(--gray-500)">${c.Programs||'—'}</td>
+    <td style="font-size:.78rem;color:var(--gray-500);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.Description||'—'}</td>
+    <td class="text-center">
+      <button class="btn btn-sm btn-outline-secondary me-1" onclick="editCourse(${c.CourseID})"><i class="fas fa-edit"></i></button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteCourse(${c.CourseID},'${c.CourseName.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+    </td></tr>`).join('');
+}
+
+function openAdd(){document.getElementById('courseId').value='';document.getElementById('courseForm').reset();document.getElementById('fCredits').value=3;document.getElementById('modalTitle').textContent='Add Course';modal.show();}
+
+async function editCourse(id){
+  const res=await API.courses.get(id);
+  if(!res?.data)return showToast('Failed to load.','error');
+  const c=res.data;
+  document.getElementById('courseId').value=c.CourseID;
+  document.getElementById('fCode').value=c.CourseCode||'';
+  document.getElementById('fName').value=c.CourseName||'';
+  document.getElementById('fCredits').value=c.CreditValue||3;
+  document.getElementById('fDesc').value=c.Description||'';
+  document.getElementById('modalTitle').textContent=`Edit — ${c.CourseName}`;modal.show();
+}
+
+async function saveCourse(){
+  const btn=document.getElementById('saveBtn');
+  const id=document.getElementById('courseId').value;
+  const data={CourseCode:document.getElementById('fCode').value.trim(),CourseName:document.getElementById('fName').value.trim(),CreditValue:document.getElementById('fCredits').value||3,Description:document.getElementById('fDesc').value};
+  if(!data.CourseCode||!data.CourseName)return showToast('Code and name are required.','warning');
+  setLoading(btn,true);
+  const res=id?await API.courses.update(id,data):await API.courses.create(data);
+  setLoading(btn,false);
+  if(!res?.success)return showToast(res?.message||'Failed.','error');
+  showToast(res.message,'success');modal.hide();loadCourses();
+}
+
+async function deleteCourse(id,name){
+  if(!confirmAction(`Delete course "${name}"?`))return;
+  const res=await API.courses.delete(id);
+  if(res?.success){showToast('Course deleted.','success');loadCourses();}
+  else showToast(res?.message||'Failed.','error');
+}
+</script>
+</body>
+</html>

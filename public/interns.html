@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Interns | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-briefcase me-2" style="color:var(--gold)"></i>Interns</h1><p class="page-subtitle">Manage internship registrations</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Add Intern</button>
+      </div>
+
+      <!-- Stats mini -->
+      <div class="row g-2 mb-3" id="internStats">
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(10,77,140,.1)"><i class="fas fa-briefcase" style="color:var(--primary)"></i></div><div class="stat-value" id="totalCount">—</div><div class="stat-label">Total Interns</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(25,135,84,.1)"><i class="fas fa-check-circle" style="color:#198754"></i></div><div class="stat-value" id="activeCount">—</div><div class="stat-label">Active</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(220,53,69,.1)"><i class="fas fa-flag-checkered" style="color:#dc3545"></i></div><div class="stat-value" id="completedCount">—</div><div class="stat-label">Completed</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-university" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="institutionCount">—</div><div class="stat-label">Institutions</div></div></div>
+      </div>
+
+      <!-- Filters -->
+      <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
+        <div class="col-md-5"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="searchInput" placeholder="Search name, institution, field…"></div></div>
+        <div class="col-md-3"><select class="form-select" id="statusFilter"><option value="">All Status</option><option value="active">Active</option><option value="completed">Completed</option></select></div>
+        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadInterns(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('internsTable','interns.csv')"><i class="fas fa-file-csv"></i></button></div>
+      </div></div></div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>All Interns <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
+        <div class="table-responsive">
+          <table class="table table-hover" id="internsTable">
+            <thead><tr><th>#</th><th>Intern ID</th><th>Full Name</th><th>Institution</th><th>Field of Study</th><th>Phone</th><th>Start Date</th><th>End Date</th><th>Status</th><th class="text-center">Actions</th></tr></thead>
+            <tbody id="internsBody"><tr><td colspan="10" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="internModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="modalTitle">Add Intern</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <form id="internForm">
+          <input type="hidden" id="internId">
+          <div class="row g-3">
+            <div class="col-12"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="fName" required></div>
+            <div class="col-md-6"><label class="form-label">Phone</label><input type="tel" class="form-control" id="fPhone" placeholder="+237 6XX XXX XXX"></div>
+            <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="fEmail"></div>
+            <div class="col-md-6"><label class="form-label">Institution</label><input type="text" class="form-control" id="fInstitution" placeholder="University / School name"></div>
+            <div class="col-md-6"><label class="form-label">Field of Study</label><input type="text" class="form-control" id="fField" placeholder="e.g. Computer Science"></div>
+            <div class="col-md-6"><label class="form-label">Start Date</label><input type="date" class="form-control" id="fStart"></div>
+            <div class="col-md-6"><label class="form-label">End Date</label><input type="date" class="form-control" id="fEnd"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="saveBtn" onclick="saveIntern()"><i class="fas fa-save me-2"></i>Save</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+let curPage = 1;
+const modal = new bootstrap.Modal(document.getElementById('internModal'));
+initLayout().then(() => loadInterns(1));
+
+async function loadInterns(page = 1) {
+  curPage = page;
+  const params = { page, limit:20, search: document.getElementById('searchInput').value.trim(), status: document.getElementById('statusFilter').value };
+  const res = await API.interns.list(params);
+  const today = new Date();
+  const tbody = document.getElementById('internsBody');
+  if (!res?.data?.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="fas fa-briefcase"></i><h6>No interns found</h6></div></td></tr>'; ['totalCount','activeCount','completedCount','institutionCount','totalBadge'].forEach(id=>document.getElementById(id).textContent='0'); return; }
+  const data  = res.data;
+  const active= data.filter(i=>i.InternshipEndDate&&new Date(i.InternshipEndDate)>=today).length;
+  const comp  = data.filter(i=>i.InternshipEndDate&&new Date(i.InternshipEndDate)<today).length;
+  const insts = [...new Set(data.map(i=>i.Institution).filter(Boolean))].length;
+  document.getElementById('totalCount').textContent       = res.pagination?.total || data.length;
+  document.getElementById('activeCount').textContent      = active;
+  document.getElementById('completedCount').textContent   = comp;
+  document.getElementById('institutionCount').textContent = insts;
+  document.getElementById('totalBadge').textContent       = res.pagination?.total || data.length;
+  document.getElementById('pageInfo').textContent         = `Showing ${data.length} of ${res.pagination?.total} interns`;
+  tbody.innerHTML = data.map((i,idx) => {
+    const ended = i.InternshipEndDate && new Date(i.InternshipEndDate) < today;
+    return `<tr>
+      <td>${(page-1)*20+idx+1}</td>
+      <td><span class="id-badge">${i.InternID}</span></td>
+      <td style="font-weight:600">${i.FullName}</td>
+      <td style="font-size:.82rem">${i.Institution||'—'}</td>
+      <td style="font-size:.8rem;color:var(--gray-500)">${i.FieldOfStudy||'—'}</td>
+      <td style="font-size:.82rem">${i.Phone||'—'}</td>
+      <td style="font-size:.78rem">${fmtDate(i.InternshipStartDate)}</td>
+      <td style="font-size:.78rem">${fmtDate(i.InternshipEndDate)}</td>
+      <td><span class="badge bg-${ended?'secondary':'success'}">${ended?'Completed':'Active'}</span></td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-secondary me-1" onclick="editIntern(${i.InternID})" title="Edit"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteIntern(${i.InternID},'${i.FullName.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+  renderPagination('pagination', page, res.pagination?.totalPages||1, loadInterns);
+}
+
+function resetFilters() { document.getElementById('searchInput').value=''; document.getElementById('statusFilter').value=''; loadInterns(1); }
+
+function openAdd() {
+  document.getElementById('internId').value=''; document.getElementById('internForm').reset();
+  document.getElementById('fStart').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modalTitle').textContent='Add New Intern'; modal.show();
+}
+
+async function editIntern(id) {
+  const res = await API.interns.get(id);
+  if (!res?.data) return showToast('Failed to load intern.','error');
+  const i = res.data;
+  document.getElementById('internId').value=i.InternID;
+  document.getElementById('fName').value=i.FullName||'';
+  document.getElementById('fPhone').value=i.Phone||'';
+  document.getElementById('fEmail').value=i.Email||'';
+  document.getElementById('fInstitution').value=i.Institution||'';
+  document.getElementById('fField').value=i.FieldOfStudy||'';
+  document.getElementById('fStart').value=i.InternshipStartDate?.split('T')[0]||'';
+  document.getElementById('fEnd').value=i.InternshipEndDate?.split('T')[0]||'';
+  document.getElementById('modalTitle').textContent=`Edit — ${i.FullName}`; modal.show();
+}
+
+async function saveIntern() {
+  const btn=document.getElementById('saveBtn');
+  const id =document.getElementById('internId').value;
+  const data={ FullName:document.getElementById('fName').value.trim(), Phone:document.getElementById('fPhone').value, Email:document.getElementById('fEmail').value, Institution:document.getElementById('fInstitution').value, FieldOfStudy:document.getElementById('fField').value, InternshipStartDate:document.getElementById('fStart').value||null, InternshipEndDate:document.getElementById('fEnd').value||null };
+  if(!data.FullName) return showToast('Full name required.','warning');
+  setLoading(btn,true);
+  const res=id?await API.interns.update(id,data):await API.interns.create(data);
+  setLoading(btn,false);
+  if(!res?.success) return showToast(res?.message||'Failed.','error');
+  showToast(res.message,'success'); modal.hide(); loadInterns(curPage);
+}
+
+async function deleteIntern(id,name) {
+  if(!confirmAction(`Delete intern "${name}"?`)) return;
+  const res=await API.interns.delete(id);
+  if(res?.success){showToast(res.message,'success');loadInterns(curPage);}
+  else showToast(res?.message||'Failed.','error');
+}
+document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')loadInterns(1);});
+</script>
+</body>
+</html>

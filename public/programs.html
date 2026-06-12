@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Programs | ESIMS</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+<div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
+<div id="app" class="app-wrapper d-none">
+  <nav id="sidebar"></nav>
+  <div class="main-content" id="mainContent">
+    <header class="topnav" id="topnav"></header>
+    <div class="page-content fade-in">
+
+      <div class="page-header">
+        <div><h1 class="page-title"><i class="fas fa-book-open me-2" style="color:var(--gold)"></i>Programs</h1><p class="page-subtitle">Manage training programs offered</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Add Program</button>
+      </div>
+
+      <!-- Program Cards -->
+      <div class="row g-3" id="programGrid">
+        <div class="col-12 text-center py-5"><div class="spinner-border text-primary"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="progModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Add Program</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <form id="progForm">
+        <input type="hidden" id="progId">
+        <div class="mb-3"><label class="form-label">Program Name *</label><input type="text" class="form-control" id="fName" required placeholder="e.g. Software Engineering"></div>
+        <div class="row g-3 mb-3">
+          <div class="col-md-6"><label class="form-label">Duration (months)</label><input type="number" class="form-control" id="fDuration" min="1" max="60" placeholder="e.g. 6"></div>
+          <div class="col-md-6"><label class="form-label">Tuition Fee (FCFA)</label><input type="number" class="form-control" id="fFee" min="0" step="1000" placeholder="e.g. 200000"></div>
+        </div>
+        <div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" id="fDesc" rows="3" placeholder="Brief program description…"></textarea></div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="saveBtn" onclick="saveProgram()"><i class="fas fa-save me-2"></i>Save</button></div>
+  </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
+<script>
+const PROG_ICONS = {'Software Engineering':'fa-code','Cybersecurity':'fa-shield-alt','Networking':'fa-network-wired','Web Development':'fa-globe','Graphics Design':'fa-paint-brush','Mobile App Development':'fa-mobile-alt','Search Engine Optimization':'fa-search','Hardware Maintenance':'fa-microchip'};
+const PROG_COLORS = ['#0A4D8C','#D4AF37','#198754','#6f42c1','#fd7e14','#0dcaf0','#dc3545','#20c997'];
+const modal = new bootstrap.Modal(document.getElementById('progModal'));
+
+initLayout().then(() => loadPrograms());
+
+async function loadPrograms() {
+  const res = await API.programs.list();
+  const grid = document.getElementById('programGrid');
+  if (!res?.data?.length) { grid.innerHTML = '<div class="col-12"><div class="empty-state"><i class="fas fa-book-open"></i><h6>No programs found</h6></div></div>'; return; }
+  grid.innerHTML = res.data.map((p, i) => {
+    const icon  = Object.entries(PROG_ICONS).find(([k]) => p.ProgramName.includes(k))?.[1] || 'fa-graduation-cap';
+    const color = PROG_COLORS[i % PROG_COLORS.length];
+    return `<div class="col-md-6 col-lg-4 col-xl-3">
+      <div class="panel h-100" style="border-top:4px solid ${color};transition:all .2s" onmouseenter="this.style.transform='translateY(-3px)'" onmouseleave="this.style.transform='translateY(0)'">
+        <div class="panel-body">
+          <div style="width:50px;height:50px;background:${color}20;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem">
+            <i class="fas ${icon}" style="color:${color};font-size:1.3rem"></i>
+          </div>
+          <h6 style="font-weight:800;font-size:.95rem;margin-bottom:.5rem">${p.ProgramName}</h6>
+          <p style="font-size:.78rem;color:var(--gray-500);margin-bottom:1rem;line-height:1.5">${p.Description||'No description provided.'}</p>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span style="font-size:.75rem;color:var(--gray-500)"><i class="fas fa-clock me-1"></i>${p.Duration||'—'} months</span>
+            <span style="font-size:.75rem;font-weight:700;color:#198754">${fmtCurrency(p.TuitionFee)}</span>
+          </div>
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="badge" style="background:${color}20;color:${color};font-size:.72rem"><i class="fas fa-users me-1"></i>${p.EnrolledCount||0} enrolled</span>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-1" onclick="editProgram(${p.ProgramID})" title="Edit"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteProgram(${p.ProgramID},'${p.ProgramName.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAdd() { document.getElementById('progId').value=''; document.getElementById('progForm').reset(); document.getElementById('modalTitle').textContent='Add Program'; modal.show(); }
+
+async function editProgram(id) {
+  const res = await API.programs.get(id);
+  if (!res?.data) return showToast('Failed to load.','error');
+  const p = res.data;
+  document.getElementById('progId').value=p.ProgramID;
+  document.getElementById('fName').value=p.ProgramName||'';
+  document.getElementById('fDuration').value=p.Duration||'';
+  document.getElementById('fFee').value=p.TuitionFee||'';
+  document.getElementById('fDesc').value=p.Description||'';
+  document.getElementById('modalTitle').textContent=`Edit — ${p.ProgramName}`; modal.show();
+}
+
+async function saveProgram() {
+  const btn=document.getElementById('saveBtn');
+  const id=document.getElementById('progId').value;
+  const data={ProgramName:document.getElementById('fName').value.trim(),Duration:document.getElementById('fDuration').value||null,TuitionFee:document.getElementById('fFee').value||0,Description:document.getElementById('fDesc').value};
+  if(!data.ProgramName)return showToast('Program name required.','warning');
+  setLoading(btn,true);
+  const res=id?await API.programs.update(id,data):await API.programs.create(data);
+  setLoading(btn,false);
+  if(!res?.success)return showToast(res?.message||'Failed.','error');
+  showToast(res.message,'success');modal.hide();loadPrograms();
+}
+
+async function deleteProgram(id,name){
+  if(!confirmAction(`Delete program "${name}"?`))return;
+  const res=await API.programs.delete(id);
+  if(res?.success){showToast('Program deleted.','success');loadPrograms();}
+  else showToast(res?.message||'Failed.','error');
+}
+</script>
+</body>
+</html>
