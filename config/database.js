@@ -80,6 +80,21 @@ async function setupAdditionalTables() {
       CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 
+    await conn.execute(`CREATE TABLE IF NOT EXISTS intern_payments (
+      InternPaymentID INT AUTO_INCREMENT PRIMARY KEY,
+      InternID        INT NOT NULL,
+      ReceiptNumber   VARCHAR(100) NOT NULL UNIQUE,
+      PayerName       VARCHAR(150),
+      TotalFee        DECIMAL(12,2) NOT NULL DEFAULT 0,
+      AmountPaid      DECIMAL(12,2) NOT NULL DEFAULT 0,
+      Balance         DECIMAL(12,2) NOT NULL DEFAULT 0,
+      PaymentMethod   ENUM('Cash','Mobile Money','Bank Transfer') NOT NULL DEFAULT 'Cash',
+      PaymentDate     DATE NOT NULL,
+      Notes           TEXT,
+      RecordedBy      INT,
+      CreatedAt       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
     await conn.execute(`CREATE TABLE IF NOT EXISTS file_uploads (
       FileID INT AUTO_INCREMENT PRIMARY KEY,
       StudentID INT,
@@ -92,6 +107,42 @@ async function setupAdditionalTables() {
       UploadedBy INT,
       UploadedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+    // ── Ensure AUTO_INCREMENT on primary keys that may be missing it ──
+    const ensureAutoIncrement = async (table, pkCol) => {
+      const [[row]] = await conn.execute(
+        `SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, pkCol]
+      );
+      if (row && !row.EXTRA.includes('auto_increment')) {
+        await conn.execute('SET FOREIGN_KEY_CHECKS=0');
+        await conn.execute(
+          `ALTER TABLE \`${table}\` MODIFY COLUMN \`${pkCol}\` INT NOT NULL AUTO_INCREMENT`
+        );
+        await conn.execute('SET FOREIGN_KEY_CHECKS=1');
+      }
+    };
+    await ensureAutoIncrement('INTERN',  'InternID');
+    await ensureAutoIncrement('PAYMENT', 'PaymentID');
+
+    // ── Add Guardian columns to INTERN if they don't exist ───────
+    const addColIfMissing = async (table, col, def) => {
+      const [[{ cnt }]] = await conn.execute(
+        `SELECT COUNT(*) as cnt FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+        [table, col]
+      );
+      if (cnt === 0) await conn.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${def}`);
+    };
+    await addColIfMissing('INTERN', 'GuardianName',         'VARCHAR(150) NULL');
+    await addColIfMissing('INTERN', 'GuardianPhone',        'VARCHAR(50)  NULL');
+    await addColIfMissing('INTERN', 'GuardianRelationship', 'VARCHAR(100) NULL');
+
+    // Widen DocumentType so users can store long document labels
+    await conn.execute(
+      `ALTER TABLE file_uploads MODIFY COLUMN DocumentType VARCHAR(200) NOT NULL DEFAULT 'document'`
+    ).catch(() => {}); // ignore if column doesn't exist yet
 
     // Seed roles
     await conn.execute(`INSERT IGNORE INTO roles (RoleName, Description) VALUES

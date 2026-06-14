@@ -26,8 +26,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const { studentId, internId, documentType } = req.body;
     if (!studentId && !internId) return res.status(400).json({ success: false, message: 'studentId or internId is required.' });
 
-    const sub      = internId ? 'interns' : 'students';
-    const filePath = `uploads/${sub}/${req.file.filename}`;
+    const filePath = `uploads/${req.file.filename}`;
 
     const r = await execute(
       'INSERT INTO file_uploads (StudentID,InternID,DocumentType,FileName,FilePath,FileSize,MimeType,UploadedBy) VALUES (?,?,?,?,?,?,?,?)',

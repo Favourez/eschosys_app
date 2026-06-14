@@ -7,7 +7,15 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/css/style.css">
-</head>
+  <style>
+    .balance-preview{background:linear-gradient(135deg,#0A4D8C,#1565C0);color:#fff;border-radius:12px;padding:1rem 1.2rem;display:flex;justify-content:space-between;align-items:center}
+    .balance-preview .lbl{font-size:.72rem;opacity:.75;letter-spacing:.3px;text-transform:uppercase}
+    .balance-preview .val{font-size:1.4rem;font-weight:800}
+    .balance-preview.danger{background:linear-gradient(135deg,#c62828,#e53935)}
+    .balance-preview.paid{background:linear-gradient(135deg,#1b5e20,#2e7d32)}
+    .nav-tabs .nav-link{font-weight:600;color:var(--gray-600)}
+    .nav-tabs .nav-link.active{color:var(--primary);border-bottom:3px solid var(--primary)}
+  </style>
 <body>
 <div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
 <div id="app" class="app-wrapper d-none">
@@ -16,63 +24,150 @@
     <header class="topnav" id="topnav"></header>
     <div class="page-content fade-in">
 
+      <!-- Page Header -->
       <div class="page-header">
-        <div><h1 class="page-title"><i class="fas fa-money-bill-wave me-2" style="color:var(--gold)"></i>Payments</h1><p class="page-subtitle">Track all student fee payments</p></div>
+        <div><h1 class="page-title"><i class="fas fa-money-bill-wave me-2" style="color:var(--gold)"></i>Payments</h1><p class="page-subtitle">Track all fee payments for students and interns</p></div>
         <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Record Payment</button>
       </div>
 
-      <!-- Summary Cards -->
-      <div class="row g-2 mb-3">
-        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(25,135,84,.1)"><i class="fas fa-check-circle" style="color:#198754"></i></div><div class="stat-value text-success" id="totalPaid">—</div><div class="stat-label">Total Collected</div></div></div>
-        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(220,53,69,.1)"><i class="fas fa-exclamation-triangle" style="color:#dc3545"></i></div><div class="stat-value text-danger" id="totalBalance">—</div><div class="stat-label">Total Outstanding</div></div></div>
-        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(10,77,140,.1)"><i class="fas fa-receipt" style="color:var(--primary)"></i></div><div class="stat-value" id="transCount">—</div><div class="stat-label">Transactions</div></div></div>
-        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-mobile-alt" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="mmCount">—</div><div class="stat-label">Mobile Money</div></div></div>
-      </div>
+      <!-- Tabs -->
+      <ul class="nav nav-tabs mb-3" id="payTabs">
+        <li class="nav-item"><a class="nav-link active" id="tab-students" href="#" onclick="switchTab('students');return false;"><i class="fas fa-user-graduate me-2"></i>Student Payments</a></li>
+        <li class="nav-item"><a class="nav-link" id="tab-interns" href="#" onclick="switchTab('interns');return false;"><i class="fas fa-briefcase me-2"></i>Intern Payments</a></li>
+      </ul>
 
-      <!-- Filters -->
-      <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
-        <div class="col-md-4"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="searchInput" placeholder="Search student, receipt…"></div></div>
-        <div class="col-md-2"><select class="form-select" id="methodFilter"><option value="">All Methods</option><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
-        <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadPayments(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('paymentsTable','payments.csv')"><i class="fas fa-file-csv"></i></button></div>
-      </div></div></div>
-
-      <div class="tbl-wrap">
-        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>Payment Records <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
-        <div class="table-responsive">
-          <table class="table table-hover" id="paymentsTable">
-            <thead><tr><th>Receipt #</th><th>Student</th><th>Payer</th><th>Amount Paid</th><th>Balance</th><th>Method</th><th>Date</th><th class="text-center">Actions</th></tr></thead>
-            <tbody id="paymentsBody"><tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
-          </table>
+      <!-- ══════════════════════════════════
+           STUDENT PAYMENTS PANEL
+      ══════════════════════════════════ -->
+      <div id="panel-students">
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(25,135,84,.1)"><i class="fas fa-check-circle" style="color:#198754"></i></div><div class="stat-value text-success" id="sTotalPaid">—</div><div class="stat-label">Collected (Students)</div></div></div>
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(220,53,69,.1)"><i class="fas fa-exclamation-triangle" style="color:#dc3545"></i></div><div class="stat-value text-danger" id="sTotalBalance">—</div><div class="stat-label">Outstanding</div></div></div>
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(10,77,140,.1)"><i class="fas fa-receipt" style="color:var(--primary)"></i></div><div class="stat-value" id="sTransCount">—</div><div class="stat-label">Transactions</div></div></div>
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-mobile-alt" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="sMMCount">—</div><div class="stat-label">Mobile Money</div></div></div>
         </div>
-        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
+        <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
+          <div class="col-md-4"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="sSearch" placeholder="Search student, receipt…"></div></div>
+          <div class="col-md-2"><select class="form-select" id="sMethod"><option value="">All Methods</option><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+          <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadStudentPayments(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetS()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('sTbl','student-payments.csv')"><i class="fas fa-file-csv"></i></button></div>
+        </div></div></div>
+        <div class="tbl-wrap">
+          <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>Student Payment Records <span class="badge bg-primary" id="sBadge">0</span></h5></div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" id="sTbl">
+              <thead><tr><th>Receipt #</th><th>Student</th><th>Payer</th><th>Amount Paid</th><th>Balance</th><th>Method</th><th>Date</th><th class="text-center">Actions</th></tr></thead>
+              <tbody id="sBody"><tr><td colspan="8" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+            </table>
+          </div>
+          <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="sPageInfo"></small><div id="sPag"></div></div>
+        </div>
       </div>
+
+      <!-- ══════════════════════════════════
+           INTERN PAYMENTS PANEL
+      ══════════════════════════════════ -->
+      <div id="panel-interns" class="d-none">
+        <div class="row g-2 mb-3">
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(25,135,84,.1)"><i class="fas fa-check-circle" style="color:#198754"></i></div><div class="stat-value text-success" id="iTotalPaid">—</div><div class="stat-label">Collected (Interns)</div></div></div>
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(220,53,69,.1)"><i class="fas fa-exclamation-triangle" style="color:#dc3545"></i></div><div class="stat-value text-danger" id="iTotalBalance">—</div><div class="stat-label">Outstanding</div></div></div>
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(10,77,140,.1)"><i class="fas fa-receipt" style="color:var(--primary)"></i></div><div class="stat-value" id="iTransCount">—</div><div class="stat-label">Transactions</div></div></div>
+          <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-mobile-alt" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="iMMCount">—</div><div class="stat-label">Mobile Money</div></div></div>
+        </div>
+        <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
+          <div class="col-md-4"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="iSearch" placeholder="Search intern, receipt…"></div></div>
+          <div class="col-md-2"><select class="form-select" id="iMethod"><option value="">All Methods</option><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+          <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadInternPayments(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetI()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('iTbl','intern-payments.csv')"><i class="fas fa-file-csv"></i></button></div>
+        </div></div></div>
+        <div class="tbl-wrap">
+          <div class="tbl-head"><h5><i class="fas fa-briefcase me-2" style="color:var(--gold-dark)"></i>Intern Payment Records <span class="badge bg-warning text-dark" id="iBadge">0</span></h5></div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle" id="iTbl">
+              <thead><tr><th>Receipt #</th><th>Intern</th><th>Payer</th><th>Total Fee</th><th>Amount Paid</th><th>Balance</th><th>Method</th><th>Date</th><th class="text-center">Actions</th></tr></thead>
+              <tbody id="iBody"><tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-warning"></div></td></tr></tbody>
+            </table>
+          </div>
+          <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="iPageInfo"></small><div id="iPag"></div></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<!-- Add Payment Modal -->
+<!-- ══════════════════════════════════════════════════════
+     STUDENT PAYMENT MODAL
+══════════════════════════════════════════════════════ -->
 <div class="modal fade" id="payModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title" id="modalTitle">Record Payment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header" style="background:linear-gradient(135deg,var(--primary),#1565C0);color:#fff">
+      <h5 class="modal-title" id="sModalTitle"><i class="fas fa-user-graduate me-2"></i>Record Student Payment</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
     <div class="modal-body">
-      <form id="payForm">
+      <form id="payForm" autocomplete="off">
         <input type="hidden" id="payId">
         <div class="row g-3">
-          <div class="col-12"><label class="form-label">Student *</label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
-          <div class="col-md-6"><label class="form-label">Receipt Number</label><input type="text" class="form-control" id="fReceipt" placeholder="Auto-generated if blank"></div>
-          <div class="col-md-6"><label class="form-label">Payer Name</label><input type="text" class="form-control" id="fPayer"></div>
-          <div class="col-md-6"><label class="form-label">Amount Paid (FCFA) *</label><input type="number" class="form-control" id="fAmount" min="0" step="100" required></div>
-          <div class="col-md-6"><label class="form-label">Balance Remaining (FCFA)</label><input type="number" class="form-control" id="fBalance" min="0" step="100" value="0"></div>
-          <div class="col-md-6"><label class="form-label">Payment Date *</label><input type="date" class="form-control" id="fDate" required></div>
-          <div class="col-md-6"><label class="form-label">Method</label><select class="form-select" id="fMethod"><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+          <div class="col-12"><label class="form-label fw-semibold">Student <span class="text-danger">*</span></label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Receipt Number</label><input type="text" class="form-control" id="fReceipt" placeholder="Auto-generated if blank"></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Payer Name</label><input type="text" class="form-control" id="fPayer"></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Amount Paid (FCFA) <span class="text-danger">*</span></label><input type="number" class="form-control" id="fAmount" min="0" step="100" required></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Balance Remaining (FCFA)</label><input type="number" class="form-control" id="fBalance" min="0" step="100" value="0"></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Payment Date <span class="text-danger">*</span></label><input type="date" class="form-control" id="fDate" required></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Method</label><select class="form-select" id="fMethod"><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
         </div>
       </form>
     </div>
-    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success fw-bold" id="saveBtn" onclick="savePayment()"><i class="fas fa-save me-2"></i>Save</button></div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success fw-bold" id="sSaveBtn" onclick="saveStudentPayment()"><i class="fas fa-save me-2"></i>Save</button></div>
   </div></div>
 </div>
 
-<!-- Receipt Modal -->
+<!-- ══════════════════════════════════════════════════════
+     INTERN PAYMENT MODAL
+══════════════════════════════════════════════════════ -->
+<div class="modal fade" id="iPayModal" tabindex="-1">
+  <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-header" style="background:linear-gradient(135deg,#1a6b3c,#198754);color:#fff">
+      <h5 class="modal-title" id="iModalTitle"><i class="fas fa-briefcase me-2"></i>Record Intern Payment</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+      <form id="iPayForm" autocomplete="off">
+        <input type="hidden" id="iPayId">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Intern <span class="text-danger">*</span></label>
+            <select class="form-select" id="iFIntern" required onchange="onInternSelected()"><option value="">Select intern…</option></select>
+            <small id="internPrevInfo" class="text-muted d-none" style="font-size:.75rem"></small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Total Internship Fee (FCFA) <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="iFTotal" min="0" step="500" required oninput="recalcBalance()">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Amount Paid Now (FCFA) <span class="text-danger">*</span></label>
+            <input type="number" class="form-control" id="iFAmount" min="0" step="500" required oninput="recalcBalance()">
+          </div>
+
+          <!-- Live Balance Preview -->
+          <div class="col-12">
+            <div class="balance-preview" id="balancePreview">
+              <div><div class="lbl">Remaining Balance After This Payment</div><div class="val" id="balanceDisplay">— FCFA</div></div>
+              <i class="fas fa-calculator" style="font-size:2rem;opacity:.4"></i>
+            </div>
+          </div>
+
+          <div class="col-md-6"><label class="form-label fw-semibold">Payer Name</label><input type="text" class="form-control" id="iFPayer"></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Payment Date <span class="text-danger">*</span></label><input type="date" class="form-control" id="iFDate" required></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Payment Method</label><select class="form-select" id="iFMethod"><option>Cash</option><option>Mobile Money</option><option>Bank Transfer</option></select></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Notes</label><input type="text" class="form-control" id="iFNotes" placeholder="Optional notes…"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-success fw-bold" id="iSaveBtn" onclick="saveInternPayment()"><i class="fas fa-save me-2"></i>Save Payment</button></div>
+  </div></div>
+</div>
+
+<!-- Receipt Modal (shared) -->
 <div class="modal fade" id="receiptModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><h5 class="modal-title">Payment Receipt</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -84,95 +179,264 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
 <script>
-let curPage=1;
-const modal=new bootstrap.Modal(document.getElementById('payModal'));
-const receiptModal=new bootstrap.Modal(document.getElementById('receiptModal'));
+'use strict';
+let sPage = 1, iPage = 1, currentTab = 'students';
+let internPrevPaid = 0; // previously paid by selected intern
+const sModal       = new bootstrap.Modal(document.getElementById('payModal'));
+const iModal       = new bootstrap.Modal(document.getElementById('iPayModal'));
+const receiptModal = new bootstrap.Modal(document.getElementById('receiptModal'));
 
-initLayout().then(async()=>{
-  const students=await API.students.list({limit:1000});
-  if(students?.data){
-    const sel=document.getElementById('fStudent');
-    students.data.forEach(s=>sel.insertAdjacentHTML('beforeend',`<option value="${s.StudentID}">${s.FirstName} ${s.LastName} (ID: ${s.StudentID})</option>`));
+initLayout().then(async () => {
+  // Load student list for student modal
+  const students = await API.students.list({ limit: 1000 });
+  if (students?.data) {
+    const sel = document.getElementById('fStudent');
+    students.data.forEach(s => sel.insertAdjacentHTML('beforeend',
+      `<option value="${s.StudentID}">${s.FirstName} ${s.LastName} (ID: ${s.StudentID})</option>`));
   }
-  loadPayments(1);
+  // Load intern list for intern modal
+  const interns = await API.interns.list({ limit: 1000 });
+  if (interns?.data) {
+    const sel = document.getElementById('iFIntern');
+    interns.data.forEach(i => sel.insertAdjacentHTML('beforeend',
+      `<option value="${i.InternID}">${i.FullName} — ${i.Institution || i.FieldOfStudy || 'Intern'}</option>`));
+  }
+  loadStudentPayments(1);
 });
 
-async function loadPayments(page=1){
-  curPage=page;
-  const params={page,limit:20,search:document.getElementById('searchInput').value.trim(),method:document.getElementById('methodFilter').value};
-  const res=await API.payments.list(params);
-  const tbody=document.getElementById('paymentsBody');
-  if(res?.totals){
-    document.getElementById('totalPaid').textContent=fmtCurrency(res.totals.totalPaid);
-    document.getElementById('totalBalance').textContent=fmtCurrency(res.totals.totalBalance);
-    document.getElementById('transCount').textContent=res.pagination?.total||0;
-    document.getElementById('mmCount').textContent=(res.data||[]).filter(p=>p.PaymentMethod==='Mobile Money').length;
+/* ─── Tab Switch ───────────────────────────────────────────── */
+function switchTab(tab) {
+  currentTab = tab;
+  ['students','interns'].forEach(t => {
+    document.getElementById(`panel-${t}`).classList.toggle('d-none', t !== tab);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  document.querySelector('.page-header button').textContent = '';
+  document.querySelector('.page-header button').innerHTML =
+    `<i class="fas fa-plus me-2"></i>Record ${tab === 'students' ? 'Student' : 'Intern'} Payment`;
+  if (tab === 'interns') loadInternPayments(1);
+}
+
+function openAdd() {
+  if (currentTab === 'students') openStudentAdd();
+  else openInternAdd();
+}
+
+/* ══════════════════════════════════════════════════════
+   STUDENT PAYMENTS
+══════════════════════════════════════════════════════ */
+async function loadStudentPayments(page = 1) {
+  sPage = page;
+  const params = { page, limit: 20, search: document.getElementById('sSearch').value.trim(), method: document.getElementById('sMethod').value };
+  const res    = await API.payments.list(params);
+  const tbody  = document.getElementById('sBody');
+  if (res?.totals) {
+    document.getElementById('sTotalPaid').textContent    = fmtCurrency(res.totals.totalPaid);
+    document.getElementById('sTotalBalance').textContent = fmtCurrency(res.totals.totalBalance);
+    document.getElementById('sTransCount').textContent   = res.pagination?.total || 0;
+    document.getElementById('sMMCount').textContent      = (res.data||[]).filter(p => p.PaymentMethod === 'Mobile Money').length;
   }
-  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><i class="fas fa-money-bill"></i><h6>No payments found</h6></div></td></tr>';return;}
-  document.getElementById('totalBadge').textContent=res.pagination?.total||res.data.length;
-  document.getElementById('pageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total} records`;
-  tbody.innerHTML=res.data.map(p=>`<tr>
+  if (!res?.data?.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="fas fa-money-bill"></i><h6>No student payments found</h6></div></td></tr>'; return; }
+  document.getElementById('sBadge').textContent   = res.pagination?.total || res.data.length;
+  document.getElementById('sPageInfo').textContent = `Showing ${res.data.length} of ${res.pagination?.total}`;
+  tbody.innerHTML = res.data.map(p => `<tr>
     <td><span class="id-badge">${p.ReceiptNumber}</span></td>
-    <td><a href="/student-profile.html?id=${p.StudentID}" style="font-weight:600">${p.StudentName}</a></td>
+    <td style="font-weight:600"><a href="/student-profile.html?id=${p.StudentID}">${p.StudentName}</a></td>
     <td style="font-size:.82rem">${p.PayerName||'—'}</td>
     <td style="font-weight:700;color:#198754">${fmtCurrency(p.AmountPaid)}</td>
     <td style="color:#dc3545">${fmtCurrency(p.Balance)}</td>
     <td><span class="badge bg-secondary">${p.PaymentMethod}</span></td>
     <td style="font-size:.78rem">${fmtDate(p.PaymentDate)}</td>
     <td class="text-center">
-      <button class="btn btn-sm btn-outline-primary me-1" onclick="viewReceipt(${p.PaymentID})" title="View Receipt"><i class="fas fa-receipt"></i></button>
-      <button class="btn btn-sm btn-outline-danger" onclick="deletePayment(${p.PaymentID},'${p.ReceiptNumber}')" title="Delete"><i class="fas fa-trash"></i></button>
+      <button class="btn btn-sm btn-outline-primary me-1" onclick="viewStudentReceipt(${p.PaymentID})"><i class="fas fa-receipt"></i></button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteStudentPayment(${p.PaymentID},'${p.ReceiptNumber}')"><i class="fas fa-trash"></i></button>
     </td></tr>`).join('');
-  renderPagination('pagination',page,res.pagination?.totalPages||1,loadPayments);
+  renderPagination('sPag', page, res.pagination?.totalPages||1, loadStudentPayments);
 }
+function resetS() { document.getElementById('sSearch').value=''; document.getElementById('sMethod').value=''; loadStudentPayments(1); }
 
-function resetFilters(){document.getElementById('searchInput').value='';document.getElementById('methodFilter').value='';loadPayments(1);}
-
-async function openAdd(){
-  document.getElementById('payId').value='';document.getElementById('payForm').reset();
-  document.getElementById('fDate').value=new Date().toISOString().split('T')[0];
-  document.getElementById('modalTitle').textContent='Record Payment';modal.show();
+function openStudentAdd() {
+  document.getElementById('payId').value=''; document.getElementById('payForm').reset();
+  document.getElementById('fDate').value = new Date().toISOString().split('T')[0];
+  sModal.show();
 }
-
-async function savePayment(){
-  const btn=document.getElementById('saveBtn');
-  const data={StudentID:document.getElementById('fStudent').value,ReceiptNumber:document.getElementById('fReceipt').value||null,PayerName:document.getElementById('fPayer').value,AmountPaid:document.getElementById('fAmount').value,Balance:document.getElementById('fBalance').value||0,PaymentDate:document.getElementById('fDate').value,PaymentMethod:document.getElementById('fMethod').value};
-  if(!data.StudentID||!data.AmountPaid)return showToast('Student and amount are required.','warning');
+async function saveStudentPayment() {
+  const btn  = document.getElementById('sSaveBtn');
+  const data = { StudentID: document.getElementById('fStudent').value, ReceiptNumber: document.getElementById('fReceipt').value||null, PayerName: document.getElementById('fPayer').value, AmountPaid: document.getElementById('fAmount').value, Balance: document.getElementById('fBalance').value||0, PaymentDate: document.getElementById('fDate').value, PaymentMethod: document.getElementById('fMethod').value };
+  if (!data.StudentID || !data.AmountPaid) return showToast('Student and amount are required.','warning');
   setLoading(btn,true);
-  const res=await API.payments.create(data);
+  const res = await API.payments.create(data);
   setLoading(btn,false);
-  if(!res?.success)return showToast(res?.message||'Failed.','error');
-  showToast('Payment recorded!','success');modal.hide();loadPayments(curPage);
+  if (!res?.success) return showToast(res?.message||'Failed.','error');
+  showToast('Payment recorded!','success'); sModal.hide(); loadStudentPayments(sPage);
+}
+async function viewStudentReceipt(id) {
+  const res = await API.payments.get(id);
+  if (!res?.data) return showToast('Receipt not found.','error');
+  const p = res.data;
+  document.getElementById('receiptContent').innerHTML = receiptHTML({ receipt: p.ReceiptNumber, name: p.StudentName, payer: p.PayerName, date: p.PaymentDate, method: p.PaymentMethod, paid: p.AmountPaid, balance: p.Balance });
+  receiptModal.show();
+}
+async function deleteStudentPayment(id, receipt) {
+  if (!confirmAction(`Delete receipt "${receipt}"?`)) return;
+  const res = await API.payments.delete(id);
+  if (res?.success) { showToast('Payment deleted.','success'); loadStudentPayments(sPage); }
+  else showToast(res?.message||'Failed.','error');
+}
+document.getElementById('sSearch').addEventListener('keydown', e => { if (e.key==='Enter') loadStudentPayments(1); });
+
+/* ══════════════════════════════════════════════════════
+   INTERN PAYMENTS
+══════════════════════════════════════════════════════ */
+async function loadInternPayments(page = 1) {
+  iPage = page;
+  const params = { page, limit: 20, search: document.getElementById('iSearch').value.trim(), method: document.getElementById('iMethod').value };
+  const res    = await API.internPayments.list(params);
+  const tbody  = document.getElementById('iBody');
+  if (res?.totals) {
+    document.getElementById('iTotalPaid').textContent    = fmtCurrency(res.totals.totalPaid);
+    document.getElementById('iTotalBalance').textContent = fmtCurrency(res.totals.totalBalance);
+    document.getElementById('iTransCount').textContent   = res.pagination?.total || 0;
+    document.getElementById('iMMCount').textContent      = (res.data||[]).filter(p => p.PaymentMethod === 'Mobile Money').length;
+  }
+  if (!res?.data?.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><i class="fas fa-briefcase"></i><h6>No intern payments found</h6></div></td></tr>'; return; }
+  document.getElementById('iBadge').textContent   = res.pagination?.total || res.data.length;
+  document.getElementById('iPageInfo').textContent = `Showing ${res.data.length} of ${res.pagination?.total}`;
+  tbody.innerHTML = res.data.map(p => {
+    const balColor = parseFloat(p.Balance) <= 0 ? '#198754' : '#dc3545';
+    return `<tr>
+    <td><span class="id-badge">${p.ReceiptNumber}</span></td>
+    <td style="font-weight:600">${p.InternName}</td>
+    <td style="font-size:.82rem">${p.PayerName||'—'}</td>
+    <td style="font-size:.82rem">${fmtCurrency(p.TotalFee)}</td>
+    <td style="font-weight:700;color:#198754">${fmtCurrency(p.AmountPaid)}</td>
+    <td style="font-weight:700;color:${balColor}">${parseFloat(p.Balance)<=0?'<span class="badge bg-success">PAID</span>':fmtCurrency(p.Balance)}</td>
+    <td><span class="badge bg-secondary">${p.PaymentMethod}</span></td>
+    <td style="font-size:.78rem">${fmtDate(p.PaymentDate)}</td>
+    <td class="text-center">
+      <button class="btn btn-sm btn-outline-primary me-1" onclick="viewInternReceipt(${p.InternPaymentID})"><i class="fas fa-receipt"></i></button>
+      <button class="btn btn-sm btn-outline-danger" onclick="deleteInternPayment(${p.InternPaymentID},'${p.ReceiptNumber}')"><i class="fas fa-trash"></i></button>
+    </td></tr>`;
+  }).join('');
+  renderPagination('iPag', page, res.pagination?.totalPages||1, loadInternPayments);
+}
+function resetI() { document.getElementById('iSearch').value=''; document.getElementById('iMethod').value=''; loadInternPayments(1); }
+
+function openInternAdd() {
+  document.getElementById('iPayId').value=''; document.getElementById('iPayForm').reset();
+  document.getElementById('iFDate').value = new Date().toISOString().split('T')[0];
+  internPrevPaid = 0;
+  document.getElementById('internPrevInfo').classList.add('d-none');
+  updateBalanceDisplay(null);
+  iModal.show();
 }
 
-async function viewReceipt(id){
-  const res=await API.payments.get(id);
-  if(!res?.data)return showToast('Receipt not found.','error');
-  const p=res.data;
-  document.getElementById('receiptContent').innerHTML=`
-  <div class="receipt-card">
-    <div class="receipt-header"><div style="font-size:1.4rem;font-weight:900;margin-bottom:.3rem">ESC</div><div style="font-size:.95rem;font-weight:700">Eschosys Technologies</div><div style="font-size:.75rem;opacity:.8">Accacias, Yaoundé, Cameroon</div><div style="font-size:.7rem;opacity:.7;margin-top:.5rem">OFFICIAL PAYMENT RECEIPT</div></div>
-    <div class="receipt-body">
-      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Receipt #</span><span style="font-weight:700">${p.ReceiptNumber}</span></div>
-      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Student</span><span style="font-weight:600">${p.StudentName}</span></div>
-      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Payer</span><span>${p.PayerName||'—'}</span></div>
-      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Date</span><span>${fmtDate(p.PaymentDate)}</span></div>
-      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Method</span><span>${p.PaymentMethod}</span></div>
-      <div class="r-row" style="margin-top:.5rem;padding-top:.5rem;border-top:2px solid var(--primary)"><span style="font-weight:700;font-size:.95rem">Amount Paid</span><span style="font-weight:800;font-size:1.2rem;color:#198754">${fmtCurrency(p.AmountPaid)}</span></div>
-      <div class="r-row"><span style="font-size:.8rem;color:#dc3545">Balance Remaining</span><span style="font-weight:700;color:#dc3545">${fmtCurrency(p.Balance)}</span></div>
-    </div>
-    <div style="padding:.8rem;text-align:center;font-size:.72rem;color:var(--gray-500);border-top:1px dashed var(--gray-200)">This receipt is valid and officially issued by Eschosys Technologies</div>
-  </div>`;
+async function onInternSelected() {
+  const internId = document.getElementById('iFIntern').value;
+  if (!internId) { internPrevPaid = 0; document.getElementById('internPrevInfo').classList.add('d-none'); updateBalanceDisplay(null); return; }
+  const res = await API.internPayments.byIntern(internId);
+  internPrevPaid = parseFloat(res?.summary?.totalPaid || 0);
+  const fee      = parseFloat(res?.summary?.totalFee  || 0);
+  const info     = document.getElementById('internPrevInfo');
+  if (internPrevPaid > 0) {
+    info.textContent = `Previously paid: ${fmtCurrency(internPrevPaid)}${fee ? ' | Total fee on record: ' + fmtCurrency(fee) : ''}`;
+    info.classList.remove('d-none');
+    if (fee) document.getElementById('iFTotal').value = fee;
+  } else {
+    info.textContent = 'No prior payments recorded for this intern.';
+    info.classList.remove('d-none');
+  }
+  recalcBalance();
+}
+
+function recalcBalance() {
+  const total  = parseFloat(document.getElementById('iFTotal').value)  || 0;
+  const paid   = parseFloat(document.getElementById('iFAmount').value) || 0;
+  if (!total && !paid) { updateBalanceDisplay(null); return; }
+  const balance = total - internPrevPaid - paid;
+  updateBalanceDisplay(balance);
+}
+
+function updateBalanceDisplay(balance) {
+  const box  = document.getElementById('balancePreview');
+  const disp = document.getElementById('balanceDisplay');
+  if (balance === null) { disp.textContent = '— FCFA'; box.className = 'balance-preview'; return; }
+  disp.textContent = fmtCurrency(Math.max(0, balance));
+  if (balance <= 0)       box.className = 'balance-preview paid';
+  else if (balance < 5000) box.className = 'balance-preview';
+  else                     box.className = 'balance-preview';
+}
+
+async function saveInternPayment() {
+  const btn  = document.getElementById('iSaveBtn');
+  const data = {
+    InternID:      document.getElementById('iFIntern').value,
+    TotalFee:      document.getElementById('iFTotal').value,
+    AmountPaid:    document.getElementById('iFAmount').value,
+    PayerName:     document.getElementById('iFPayer').value || null,
+    PaymentDate:   document.getElementById('iFDate').value,
+    PaymentMethod: document.getElementById('iFMethod').value,
+    Notes:         document.getElementById('iFNotes').value || null,
+  };
+  if (!data.InternID)   return showToast('Please select an intern.','warning');
+  if (!data.TotalFee)   return showToast('Total internship fee is required.','warning');
+  if (!data.AmountPaid) return showToast('Amount paid is required.','warning');
+  setLoading(btn, true);
+  const res = await API.internPayments.create(data);
+  setLoading(btn, false);
+  if (!res?.success) return showToast(res?.message||'Failed.','error');
+  showToast('Intern payment recorded!','success'); iModal.hide(); loadInternPayments(iPage);
+}
+
+async function viewInternReceipt(id) {
+  const res = await API.internPayments.get(id);
+  if (!res?.data) return showToast('Receipt not found.','error');
+  const p = res.data;
+  document.getElementById('receiptContent').innerHTML = receiptHTML({
+    receipt: p.ReceiptNumber, name: p.InternName, payer: p.PayerName,
+    date: p.PaymentDate, method: p.PaymentMethod, paid: p.AmountPaid, balance: p.Balance,
+    extra: `<div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Total Fee</span><span>${fmtCurrency(p.TotalFee)}</span></div>`
+  });
   receiptModal.show();
 }
 
-async function deletePayment(id,receipt){
-  if(!confirmAction(`Delete receipt "${receipt}"?`))return;
-  const res=await API.payments.delete(id);
-  if(res?.success){showToast('Payment deleted.','success');loadPayments(curPage);}
+async function deleteInternPayment(id, receipt) {
+  if (!confirmAction(`Delete intern receipt "${receipt}"?`)) return;
+  const res = await API.internPayments.delete(id);
+  if (res?.success) { showToast('Payment deleted.','success'); loadInternPayments(iPage); }
   else showToast(res?.message||'Failed.','error');
 }
-document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')loadPayments(1);});
+document.getElementById('iSearch').addEventListener('keydown', e => { if (e.key==='Enter') loadInternPayments(1); });
+
+/* ─── Shared Receipt Template ──────────────────────────────── */
+function receiptHTML({ receipt, name, payer, date, method, paid, balance, extra = '' }) {
+  return `<div class="receipt-card">
+    <div class="receipt-header">
+      <div style="font-size:1.4rem;font-weight:900;margin-bottom:.3rem">ESC</div>
+      <div style="font-size:.95rem;font-weight:700">Eschosys Technologies</div>
+      <div style="font-size:.75rem;opacity:.8">Accacias, Yaoundé, Cameroon</div>
+      <div style="font-size:.7rem;opacity:.7;margin-top:.5rem">OFFICIAL PAYMENT RECEIPT</div>
+    </div>
+    <div class="receipt-body">
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Receipt #</span><span style="font-weight:700">${receipt}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Name</span><span style="font-weight:600">${name}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Payer</span><span>${payer||'—'}</span></div>
+      ${extra}
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Date</span><span>${fmtDate(date)}</span></div>
+      <div class="r-row"><span style="font-size:.8rem;color:var(--gray-500)">Method</span><span>${method}</span></div>
+      <div class="r-row" style="margin-top:.5rem;padding-top:.5rem;border-top:2px solid var(--primary)">
+        <span style="font-weight:700;font-size:.95rem">Amount Paid</span>
+        <span style="font-weight:800;font-size:1.2rem;color:#198754">${fmtCurrency(paid)}</span>
+      </div>
+      <div class="r-row"><span style="font-size:.8rem;color:#dc3545">Balance Remaining</span>
+        <span style="font-weight:700;color:${parseFloat(balance)<=0?'#198754':'#dc3545'}">${parseFloat(balance)<=0?'FULLY PAID':fmtCurrency(balance)}</span>
+      </div>
+    </div>
+    <div style="padding:.8rem;text-align:center;font-size:.72rem;color:var(--gray-500);border-top:1px dashed var(--gray-200)">
+      This receipt is valid and officially issued by Eschosys Technologies
+    </div>
+  </div>`;
+}
 </script>
 </body>
 </html>

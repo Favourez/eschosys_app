@@ -62,5 +62,6 @@ const API = {
   users:        { list: () => API.get('/users'), roles: () => API.get('/users/roles'), auditLogs: p => API.get('/users/audit-logs', p), create: d => API.post('/users', d), update: (id,d) => API.put(`/users/${id}`, d), delete: id => API.delete(`/users/${id}`) },
   search:       q => API.get('/search', { q }),
   files:        { list: p => API.get('/files', p), upload: (ep,fd) => API.upload(ep, fd), delete: id => API.delete(`/files/${id}`) },
+  internPayments: { list: p => API.get('/intern-payments', p), get: id => API.get(`/intern-payments/${id}`), byIntern: id => API.get(`/intern-payments/intern/${id}`), create: d => API.post('/intern-payments', d), update: (id,d) => API.put(`/intern-payments/${id}`, d), delete: id => API.delete(`/intern-payments/${id}`) },
   notifs:       { list: () => API.get('/notifications'), readAll: () => API.put('/notifications/read-all'), read: id => API.put(`/notifications/${id}/read`) },
 };

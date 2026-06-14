@@ -4,8 +4,8 @@ const fs     = require('fs');
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    const sub = req.params.type === 'intern' ? 'interns' : 'students';
-    const dir = path.join(__dirname, '..', 'uploads', sub);
+    // Use a single flat uploads/ folder — avoids req.body ordering issues with multipart
+    const dir = path.join(__dirname, '..', 'uploads');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
   },

@@ -7,6 +7,19 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/css/style.css">
+  <style>
+    .doc-card{display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border-radius:10px;background:var(--gray-100);border:1px solid var(--gray-200);transition:box-shadow .15s}
+    .doc-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .doc-icon{font-size:1.9rem;min-width:38px;text-align:center}
+    .doc-info{flex:1;min-width:0}
+    .doc-name{font-weight:700;font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+    .doc-meta{font-size:.72rem;color:var(--gray-500);margin-top:2px}
+    .upload-zone{background:var(--gray-100);border:2px dashed var(--gray-300);border-radius:10px;padding:1.25rem 1rem;transition:border-color .2s}
+    .upload-zone:focus-within{border-color:var(--primary)}
+    .guardian-toggle{background:var(--gray-100);border:1px solid var(--gray-200);border-radius:8px;width:100%;display:flex;justify-content:space-between;align-items:center;padding:.7rem 1rem;cursor:pointer;font-size:.84rem;font-weight:700;color:var(--gray-700);transition:background .15s}
+    .guardian-toggle:hover{background:var(--gray-200)}
+    .section-card{border-left:4px solid var(--primary);background:var(--gray-100);border-radius:6px;padding:1rem}
+  </style>
 </head>
 <body>
 <div class="page-loader" id="pageLoader"><div class="spinner"></div></div>
@@ -17,59 +30,198 @@
     <div class="page-content fade-in">
 
       <div class="page-header">
-        <div><h1 class="page-title"><i class="fas fa-briefcase me-2" style="color:var(--gold)"></i>Interns</h1><p class="page-subtitle">Manage internship registrations</p></div>
-        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Add Intern</button>
+        <div><h1 class="page-title"><i class="fas fa-briefcase me-2" style="color:var(--gold)"></i>Interns</h1><p class="page-subtitle">Manage internship registrations &amp; documents</p></div>
+        <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Register Intern</button>
       </div>
 
-      <!-- Stats mini -->
-      <div class="row g-2 mb-3" id="internStats">
+      <!-- Stats -->
+      <div class="row g-2 mb-3">
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(10,77,140,.1)"><i class="fas fa-briefcase" style="color:var(--primary)"></i></div><div class="stat-value" id="totalCount">—</div><div class="stat-label">Total Interns</div></div></div>
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(25,135,84,.1)"><i class="fas fa-check-circle" style="color:#198754"></i></div><div class="stat-value" id="activeCount">—</div><div class="stat-label">Active</div></div></div>
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(220,53,69,.1)"><i class="fas fa-flag-checkered" style="color:#dc3545"></i></div><div class="stat-value" id="completedCount">—</div><div class="stat-label">Completed</div></div></div>
-        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-university" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="institutionCount">—</div><div class="stat-label">Institutions</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon" style="background:rgba(212,175,55,.12)"><i class="fas fa-university" style="color:var(--gold-dark)"></i></div><div class="stat-value" id="schoolCount">—</div><div class="stat-label">Schools</div></div></div>
       </div>
 
       <!-- Filters -->
       <div class="panel mb-3"><div class="panel-body py-2"><div class="row g-2 align-items-end">
-        <div class="col-md-5"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="searchInput" placeholder="Search name, institution, field…"></div></div>
+        <div class="col-md-5"><div class="input-icon"><i class="fas fa-search"></i><input type="text" class="form-control" id="searchInput" placeholder="Search name, school, specialty…"></div></div>
         <div class="col-md-3"><select class="form-select" id="statusFilter"><option value="">All Status</option><option value="active">Active</option><option value="completed">Completed</option></select></div>
         <div class="col-md-4 d-flex gap-2"><button class="btn btn-primary flex-fill" onclick="loadInterns(1)"><i class="fas fa-filter me-1"></i>Filter</button><button class="btn btn-outline-secondary" onclick="resetFilters()"><i class="fas fa-redo"></i></button><button class="btn btn-outline-success" onclick="exportCSV('internsTable','interns.csv')"><i class="fas fa-file-csv"></i></button></div>
       </div></div></div>
 
+      <!-- Enrolled Interns Table -->
       <div class="tbl-wrap">
-        <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>All Interns <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
+        <div class="tbl-head"><h5><i class="fas fa-users me-2" style="color:var(--primary)"></i>Enrolled Interns <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
         <div class="table-responsive">
-          <table class="table table-hover" id="internsTable">
-            <thead><tr><th>#</th><th>Intern ID</th><th>Full Name</th><th>Institution</th><th>Field of Study</th><th>Phone</th><th>Start Date</th><th>End Date</th><th>Status</th><th class="text-center">Actions</th></tr></thead>
+          <table class="table table-hover align-middle" id="internsTable">
+            <thead><tr><th>#</th><th>ID</th><th>Full Name</th><th>Current School</th><th>Academic Specialty</th><th>Phone</th><th>Period</th><th class="text-center">Status</th><th class="text-center">Docs</th><th class="text-center">Actions</th></tr></thead>
             <tbody id="internsBody"><tr><td colspan="10" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
           </table>
         </div>
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
       </div>
+
     </div>
   </div>
 </div>
 
-<!-- Modal -->
+<!-- ═══════════════════════════════════════════════════════════
+     REGISTER / EDIT INTERN MODAL
+══════════════════════════════════════════════════════════════ -->
 <div class="modal fade" id="internModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title" id="modalTitle">Add Intern</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <form id="internForm">
+      <div class="modal-header" style="background:linear-gradient(135deg,var(--primary),#1565C0);color:#fff">
+        <div>
+          <h5 class="modal-title mb-0" id="modalTitle"><i class="fas fa-user-plus me-2"></i>Register New Intern</h5>
+          <small style="opacity:.75;font-size:.75rem">Fill in the intern's details below</small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:1.5rem">
+        <form id="internForm" autocomplete="off" novalidate>
           <input type="hidden" id="internId">
-          <div class="row g-3">
-            <div class="col-12"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="fName" required></div>
-            <div class="col-md-6"><label class="form-label">Phone</label><input type="tel" class="form-control" id="fPhone" placeholder="+237 6XX XXX XXX"></div>
-            <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="fEmail"></div>
-            <div class="col-md-6"><label class="form-label">Institution</label><input type="text" class="form-control" id="fInstitution" placeholder="University / School name"></div>
-            <div class="col-md-6"><label class="form-label">Field of Study</label><input type="text" class="form-control" id="fField" placeholder="e.g. Computer Science"></div>
-            <div class="col-md-6"><label class="form-label">Start Date</label><input type="date" class="form-control" id="fStart"></div>
-            <div class="col-md-6"><label class="form-label">End Date</label><input type="date" class="form-control" id="fEnd"></div>
+
+          <!-- Personal Information -->
+          <div class="section-card mb-3">
+            <div class="fw-bold mb-3" style="font-size:.82rem;color:var(--primary);letter-spacing:.5px;text-transform:uppercase">
+              <i class="fas fa-id-card me-2"></i>Personal Information
+            </div>
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="fName" required placeholder="e.g. Jean-Paul Mbarga">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Phone <span class="text-danger">*</span></label>
+                <input type="tel" class="form-control" id="fPhone" required placeholder="+237 6XX XXX XXX">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Email <span class="text-muted fw-normal" style="font-size:.78rem">(optional)</span></label>
+                <input type="email" class="form-control" id="fEmail" placeholder="intern@email.com">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Academic Specialty</label>
+                <input type="text" class="form-control" id="fSpecialty" placeholder="e.g. Computer Science, Networks, Finance">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Current School</label>
+                <input type="text" class="form-control" id="fSchool" placeholder="e.g. University of Yaoundé I">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Internship Start Date</label>
+                <input type="date" class="form-control" id="fStart">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Internship End Date</label>
+                <input type="date" class="form-control" id="fEnd">
+              </div>
+            </div>
           </div>
+
+          <!-- Guardian Section — collapsible, optional -->
+          <div class="mb-1">
+            <button type="button" class="guardian-toggle" data-bs-toggle="collapse" data-bs-target="#guardianSection" aria-expanded="false">
+              <span><i class="fas fa-user-friends me-2" style="color:var(--gold-dark)"></i>Guardian Information <span class="badge bg-secondary ms-2" style="font-size:.65rem;font-weight:500;vertical-align:middle">Optional — click to expand</span></span>
+              <i class="fas fa-chevron-down" id="guardianChevron" style="font-size:.72rem;color:var(--gray-400);transition:transform .25s"></i>
+            </button>
+            <div class="collapse" id="guardianSection">
+              <div class="border border-top-0 rounded-bottom p-3" style="background:var(--gray-100)">
+                <p class="text-muted mb-3" style="font-size:.78rem"><i class="fas fa-info-circle me-1"></i>Guardian details are optional and can be added later.</p>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Guardian Full Name</label>
+                    <input type="text" class="form-control" id="fGuardianName" placeholder="Full name of guardian or parent">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Guardian Phone</label>
+                    <input type="tel" class="form-control" id="fGuardianPhone" placeholder="+237 6XX XXX XXX">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold">Relationship to Intern</label>
+                    <select class="form-select" id="fGuardianRel">
+                      <option value="">Select relationship…</option>
+                      <option>Father</option><option>Mother</option><option>Uncle</option>
+                      <option>Aunt</option><option>Sibling</option><option>Sponsor</option><option>Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </form>
       </div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary fw-bold" id="saveBtn" onclick="saveIntern()"><i class="fas fa-save me-2"></i>Save</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal"><i class="fas fa-times me-1"></i>Cancel</button>
+        <button class="btn btn-primary fw-bold px-4" id="saveBtn" onclick="saveIntern()"><i class="fas fa-save me-2"></i>Save Intern</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DOCUMENTS MODAL
+══════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="docsModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a6b3c,#198754);color:#fff">
+        <div>
+          <h5 class="modal-title mb-0"><i class="fas fa-folder-open me-2"></i>Intern Documents</h5>
+          <small id="docsInternName" style="opacity:.8;font-size:.78rem"></small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem">
+
+        <!-- Upload Zone -->
+        <div class="upload-zone mb-4">
+          <div class="fw-bold mb-3" style="font-size:.82rem;color:var(--primary);letter-spacing:.5px;text-transform:uppercase">
+            <i class="fas fa-cloud-upload-alt me-2"></i>Upload New Document
+          </div>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold" style="font-size:.8rem">Document Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="docLabel" maxlength="150"
+                     placeholder="e.g. National ID Card, CV, Internship Letter…">
+            </div>
+            <div class="col-md-5">
+              <label class="form-label fw-semibold" style="font-size:.8rem">Select File <span class="text-muted fw-normal" style="font-size:.7rem">PDF, Image, DOC — max 5 MB</span></label>
+              <input type="file" class="form-control form-control-sm" id="docFile"
+                     accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx">
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-success btn-sm w-100 fw-bold" id="uploadBtn" onclick="uploadDocument()">
+                <i class="fas fa-upload me-1"></i>Upload
+              </button>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div id="uploadProgress" class="mt-2 d-none">
+            <div class="progress" style="height:5px;border-radius:10px">
+              <div id="uploadBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width:0%;transition:width .3s"></div>
+            </div>
+            <small class="text-muted" style="font-size:.72rem">Uploading, please wait…</small>
+          </div>
+        </div>
+
+        <!-- Documents List -->
+        <div class="fw-bold mb-2" style="font-size:.82rem;color:var(--gray-600);letter-spacing:.4px;text-transform:uppercase">
+          <i class="fas fa-paperclip me-2"></i>Uploaded Documents <span class="badge bg-primary" id="docsCountBadge">0</span>
+        </div>
+        <div id="docsList">
+          <div class="text-center py-4">
+            <div class="spinner-border text-primary spinner-border-sm"></div>
+            <div class="text-muted mt-1" style="font-size:.8rem">Loading documents…</div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer justify-content-between py-2">
+        <small class="text-muted" id="docsFooterInfo" style="font-size:.75rem"></small>
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -77,90 +229,265 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/assets/js/api.js"></script><script src="/assets/js/main.js"></script><script src="/assets/js/layout.js"></script>
 <script>
-let curPage = 1;
-const modal = new bootstrap.Modal(document.getElementById('internModal'));
+'use strict';
+let curPage = 1, currentInternId = null, currentInternName = '';
+const modal     = new bootstrap.Modal(document.getElementById('internModal'));
+const docsModal = new bootstrap.Modal(document.getElementById('docsModal'));
+
+// Rotate guardian chevron on collapse toggle
+document.getElementById('guardianSection').addEventListener('show.bs.collapse',  () => document.getElementById('guardianChevron').style.transform = 'rotate(180deg)');
+document.getElementById('guardianSection').addEventListener('hide.bs.collapse',  () => document.getElementById('guardianChevron').style.transform = 'rotate(0deg)');
+
 initLayout().then(() => loadInterns(1));
 
+/* ─── Load Interns Table ─────────────────────────────────────── */
 async function loadInterns(page = 1) {
   curPage = page;
-  const params = { page, limit:20, search: document.getElementById('searchInput').value.trim(), status: document.getElementById('statusFilter').value };
-  const res = await API.interns.list(params);
+  const params = { page, limit: 20, search: document.getElementById('searchInput').value.trim(), status: document.getElementById('statusFilter').value };
+  const res   = await API.interns.list(params);
   const today = new Date();
   const tbody = document.getElementById('internsBody');
-  if (!res?.data?.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="fas fa-briefcase"></i><h6>No interns found</h6></div></td></tr>'; ['totalCount','activeCount','completedCount','institutionCount','totalBadge'].forEach(id=>document.getElementById(id).textContent='0'); return; }
-  const data  = res.data;
-  const active= data.filter(i=>i.InternshipEndDate&&new Date(i.InternshipEndDate)>=today).length;
-  const comp  = data.filter(i=>i.InternshipEndDate&&new Date(i.InternshipEndDate)<today).length;
-  const insts = [...new Set(data.map(i=>i.Institution).filter(Boolean))].length;
-  document.getElementById('totalCount').textContent       = res.pagination?.total || data.length;
-  document.getElementById('activeCount').textContent      = active;
-  document.getElementById('completedCount').textContent   = comp;
-  document.getElementById('institutionCount').textContent = insts;
-  document.getElementById('totalBadge').textContent       = res.pagination?.total || data.length;
-  document.getElementById('pageInfo').textContent         = `Showing ${data.length} of ${res.pagination?.total} interns`;
-  tbody.innerHTML = data.map((i,idx) => {
-    const ended = i.InternshipEndDate && new Date(i.InternshipEndDate) < today;
+
+  if (!res?.data?.length) {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><i class="fas fa-briefcase"></i><h6>No interns found</h6><p>Register the first intern using the button above.</p></div></td></tr>';
+    ['totalCount','activeCount','completedCount','schoolCount','totalBadge'].forEach(id => document.getElementById(id).textContent = '0');
+    return;
+  }
+
+  const data    = res.data;
+  const active  = data.filter(i => i.InternshipEndDate && new Date(i.InternshipEndDate) >= today).length;
+  const comp    = data.filter(i => i.InternshipEndDate && new Date(i.InternshipEndDate) <  today).length;
+  const schools = [...new Set(data.map(i => i.Institution).filter(Boolean))].length;
+
+  document.getElementById('totalCount').textContent   = res.pagination?.total || data.length;
+  document.getElementById('activeCount').textContent   = active;
+  document.getElementById('completedCount').textContent= comp;
+  document.getElementById('schoolCount').textContent   = schools;
+  document.getElementById('totalBadge').textContent    = res.pagination?.total || data.length;
+  document.getElementById('pageInfo').textContent      = `Showing ${data.length} of ${res.pagination?.total} interns`;
+
+  tbody.innerHTML = data.map((i, idx) => {
+    const ended    = i.InternshipEndDate && new Date(i.InternshipEndDate) < today;
+    const docCount = parseInt(i.DocCount) || 0;
+    const safeN    = i.FullName.replace(/'/g, "\\'");
     return `<tr>
       <td>${(page-1)*20+idx+1}</td>
       <td><span class="id-badge">${i.InternID}</span></td>
-      <td style="font-weight:600">${i.FullName}</td>
-      <td style="font-size:.82rem">${i.Institution||'—'}</td>
-      <td style="font-size:.8rem;color:var(--gray-500)">${i.FieldOfStudy||'—'}</td>
-      <td style="font-size:.82rem">${i.Phone||'—'}</td>
-      <td style="font-size:.78rem">${fmtDate(i.InternshipStartDate)}</td>
-      <td style="font-size:.78rem">${fmtDate(i.InternshipEndDate)}</td>
-      <td><span class="badge bg-${ended?'secondary':'success'}">${ended?'Completed':'Active'}</span></td>
+      <td>
+        <div class="d-flex align-items-center gap-2">
+          <img src="${avatarUrl(i.FullName)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)" alt="">
+          <div>
+            <div style="font-weight:700;font-size:.88rem">${i.FullName}</div>
+            ${i.GuardianName ? `<div style="font-size:.7rem;color:var(--gray-500)"><i class="fas fa-user-friends me-1"></i>${i.GuardianName}</div>` : ''}
+          </div>
+        </div>
+      </td>
+      <td style="font-size:.82rem">${i.Institution || '—'}</td>
+      <td style="font-size:.8rem;color:var(--gray-500)">${i.FieldOfStudy || '—'}</td>
+      <td style="font-size:.82rem">${i.Phone || '—'}</td>
+      <td style="font-size:.75rem;line-height:1.6">
+        ${fmtDate(i.InternshipStartDate)}<br>
+        <span style="color:var(--gray-500)">→ ${fmtDate(i.InternshipEndDate)}</span>
+      </td>
+      <td class="text-center">
+        <span class="badge bg-${ended ? 'secondary' : 'success'}">${ended ? 'Completed' : 'Active'}</span>
+      </td>
+      <td class="text-center">
+        <button class="btn btn-sm ${docCount > 0 ? 'btn-warning' : 'btn-outline-secondary'} fw-bold"
+                onclick="openDocs(${i.InternID},'${safeN}')" title="Manage Documents"
+                style="min-width:52px">
+          <i class="fas fa-folder${docCount > 0 ? '-open' : ''} me-1"></i>${docCount}
+        </button>
+      </td>
       <td class="text-center">
         <button class="btn btn-sm btn-outline-secondary me-1" onclick="editIntern(${i.InternID})" title="Edit"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-sm btn-outline-danger" onclick="deleteIntern(${i.InternID},'${i.FullName.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteIntern(${i.InternID},'${safeN}')" title="Delete"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
-  renderPagination('pagination', page, res.pagination?.totalPages||1, loadInterns);
+
+  renderPagination('pagination', page, res.pagination?.totalPages || 1, loadInterns);
 }
 
-function resetFilters() { document.getElementById('searchInput').value=''; document.getElementById('statusFilter').value=''; loadInterns(1); }
+function resetFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('statusFilter').value = '';
+  loadInterns(1);
+}
 
+/* ─── Open Add Modal ──────────────────────────────────────────── */
 function openAdd() {
-  document.getElementById('internId').value=''; document.getElementById('internForm').reset();
+  document.getElementById('internId').value = '';
+  document.getElementById('internForm').reset();
   document.getElementById('fStart').value = new Date().toISOString().split('T')[0];
-  document.getElementById('modalTitle').textContent='Add New Intern'; modal.show();
+  // Collapse guardian section if open
+  const gs = document.getElementById('guardianSection');
+  if (gs.classList.contains('show')) bootstrap.Collapse.getOrCreateInstance(gs).hide();
+  document.getElementById('modalTitle').innerHTML = '<i class="fas fa-user-plus me-2"></i>Register New Intern';
+  modal.show();
 }
 
+/* ─── Edit Intern ────────────────────────────────────────────── */
 async function editIntern(id) {
   const res = await API.interns.get(id);
-  if (!res?.data) return showToast('Failed to load intern.','error');
+  if (!res?.data) return showToast('Failed to load intern details.', 'error');
   const i = res.data;
-  document.getElementById('internId').value=i.InternID;
-  document.getElementById('fName').value=i.FullName||'';
-  document.getElementById('fPhone').value=i.Phone||'';
-  document.getElementById('fEmail').value=i.Email||'';
-  document.getElementById('fInstitution').value=i.Institution||'';
-  document.getElementById('fField').value=i.FieldOfStudy||'';
-  document.getElementById('fStart').value=i.InternshipStartDate?.split('T')[0]||'';
-  document.getElementById('fEnd').value=i.InternshipEndDate?.split('T')[0]||'';
-  document.getElementById('modalTitle').textContent=`Edit — ${i.FullName}`; modal.show();
+  document.getElementById('internId').value       = i.InternID;
+  document.getElementById('fName').value          = i.FullName || '';
+  document.getElementById('fPhone').value         = i.Phone || '';
+  document.getElementById('fEmail').value         = i.Email || '';
+  document.getElementById('fSpecialty').value     = i.FieldOfStudy || '';
+  document.getElementById('fSchool').value        = i.Institution || '';
+  document.getElementById('fStart').value         = i.InternshipStartDate?.split('T')[0] || '';
+  document.getElementById('fEnd').value           = i.InternshipEndDate?.split('T')[0] || '';
+  document.getElementById('fGuardianName').value  = i.GuardianName || '';
+  document.getElementById('fGuardianPhone').value = i.GuardianPhone || '';
+  document.getElementById('fGuardianRel').value   = i.GuardianRelationship || '';
+  // Auto-expand guardian section if data exists
+  if (i.GuardianName || i.GuardianPhone || i.GuardianRelationship) {
+    bootstrap.Collapse.getOrCreateInstance(document.getElementById('guardianSection'), { toggle: false }).show();
+  }
+  document.getElementById('modalTitle').innerHTML = `<i class="fas fa-edit me-2"></i>Edit — ${i.FullName}`;
+  modal.show();
 }
 
+/* ─── Save Intern ────────────────────────────────────────────── */
 async function saveIntern() {
-  const btn=document.getElementById('saveBtn');
-  const id =document.getElementById('internId').value;
-  const data={ FullName:document.getElementById('fName').value.trim(), Phone:document.getElementById('fPhone').value, Email:document.getElementById('fEmail').value, Institution:document.getElementById('fInstitution').value, FieldOfStudy:document.getElementById('fField').value, InternshipStartDate:document.getElementById('fStart').value||null, InternshipEndDate:document.getElementById('fEnd').value||null };
-  if(!data.FullName) return showToast('Full name required.','warning');
-  setLoading(btn,true);
-  const res=id?await API.interns.update(id,data):await API.interns.create(data);
-  setLoading(btn,false);
-  if(!res?.success) return showToast(res?.message||'Failed.','error');
-  showToast(res.message,'success'); modal.hide(); loadInterns(curPage);
+  const btn = document.getElementById('saveBtn');
+  const id  = document.getElementById('internId').value;
+  const data = {
+    FullName:             document.getElementById('fName').value.trim(),
+    Phone:                document.getElementById('fPhone').value.trim(),
+    Email:                document.getElementById('fEmail').value.trim() || null,
+    FieldOfStudy:         document.getElementById('fSpecialty').value.trim() || null,
+    Institution:          document.getElementById('fSchool').value.trim() || null,
+    InternshipStartDate:  document.getElementById('fStart').value || null,
+    InternshipEndDate:    document.getElementById('fEnd').value || null,
+    GuardianName:         document.getElementById('fGuardianName').value.trim() || null,
+    GuardianPhone:        document.getElementById('fGuardianPhone').value.trim() || null,
+    GuardianRelationship: document.getElementById('fGuardianRel').value || null,
+  };
+  if (!data.FullName) return showToast('Full name is required.', 'warning');
+  if (!data.Phone)    return showToast('Phone number is required.', 'warning');
+  setLoading(btn, true);
+  const res = id ? await API.interns.update(id, data) : await API.interns.create(data);
+  setLoading(btn, false);
+  if (!res?.success) return showToast(res?.message || 'Failed to save.', 'error');
+  showToast(res.message, 'success');
+  modal.hide();
+  loadInterns(curPage);
 }
 
-async function deleteIntern(id,name) {
-  if(!confirmAction(`Delete intern "${name}"?`)) return;
-  const res=await API.interns.delete(id);
-  if(res?.success){showToast(res.message,'success');loadInterns(curPage);}
-  else showToast(res?.message||'Failed.','error');
+/* ─── Delete Intern ──────────────────────────────────────────── */
+async function deleteIntern(id, name) {
+  if (!confirmAction(`Delete intern "${name}"? All their documents will also be removed.`)) return;
+  const res = await API.interns.delete(id);
+  if (res?.success) { showToast(res.message, 'success'); loadInterns(curPage); }
+  else showToast(res?.message || 'Failed.', 'error');
 }
-document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')loadInterns(1);});
+
+/* ─── Documents Management ───────────────────────────────────── */
+async function openDocs(internId, name) {
+  currentInternId   = internId;
+  currentInternName = name;
+  document.getElementById('docsInternName').textContent = name;
+  document.getElementById('docLabel').value = '';
+  document.getElementById('docFile').value  = '';
+  document.getElementById('uploadProgress').classList.add('d-none');
+  document.getElementById('uploadBar').style.width = '0%';
+  docsModal.show();
+  await loadDocs();
+}
+
+async function loadDocs() {
+  const list = document.getElementById('docsList');
+  list.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div><div class="text-muted mt-1" style="font-size:.78rem">Loading…</div></div>';
+  const res   = await API.files.list({ internId: currentInternId });
+  const files = res?.data || [];
+  document.getElementById('docsCountBadge').textContent = files.length;
+  document.getElementById('docsFooterInfo').textContent = files.length
+    ? `${files.length} document${files.length !== 1 ? 's' : ''} — ${fmtDate(files[0]?.UploadedAt)} (latest)`
+    : 'No documents uploaded yet.';
+
+  if (!files.length) {
+    list.innerHTML = `
+      <div class="empty-state" style="padding:2.5rem 0">
+        <i class="fas fa-folder-open" style="font-size:2.8rem;opacity:.18;display:block;margin-bottom:.6rem"></i>
+        <h6 style="color:var(--gray-500)">No documents yet</h6>
+        <p class="text-muted" style="font-size:.8rem;max-width:300px;margin:0 auto">Upload documents using the form above — ID card, internship letter, CV, convention, etc.</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = `<div class="d-flex flex-column gap-2">${files.map(f => docCard(f)).join('')}</div>`;
+}
+
+function docCard(f) {
+  const mime = f.MimeType || '';
+  let iconClass = 'fa-file text-secondary';
+  let iconBg    = 'rgba(108,117,125,.1)';
+  if (mime.includes('pdf'))   { iconClass = 'fa-file-pdf text-danger';  iconBg = 'rgba(220,53,69,.1)'; }
+  if (mime.includes('image')) { iconClass = 'fa-file-image text-success'; iconBg = 'rgba(25,135,84,.1)'; }
+  if (mime.includes('word') || mime.includes('document')) { iconClass = 'fa-file-word text-primary'; iconBg = 'rgba(10,77,140,.1)'; }
+  const size  = f.FileSize ? (f.FileSize >= 1048576 ? `${(f.FileSize/1048576).toFixed(1)} MB` : `${Math.round(f.FileSize/1024)} KB`) : '—';
+  const label = f.DocumentType || f.FileName;
+  return `
+    <div class="doc-card">
+      <div class="doc-icon" style="background:${iconBg};border-radius:10px;width:48px;height:48px;display:flex;align-items:center;justify-content:center">
+        <i class="fas ${iconClass}" style="font-size:1.4rem"></i>
+      </div>
+      <div class="doc-info">
+        <div class="doc-name" title="${label}">${label}</div>
+        <div class="doc-meta"><i class="fas fa-paperclip me-1"></i>${f.FileName} &nbsp;·&nbsp; ${size} &nbsp;·&nbsp; ${fmtDate(f.UploadedAt)}</div>
+      </div>
+      <div class="d-flex gap-1 flex-shrink-0">
+        <a href="/${f.FilePath}" target="_blank" class="btn btn-sm btn-outline-primary" title="View / Download"><i class="fas fa-eye"></i></a>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteDoc(${f.FileID})" title="Delete permanently"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`;
+}
+
+async function uploadDocument() {
+  const label     = document.getElementById('docLabel').value.trim();
+  const fileInput = document.getElementById('docFile');
+  const btn       = document.getElementById('uploadBtn');
+  if (!label)                  return showToast('Please enter a document name first.', 'warning');
+  if (!fileInput.files.length) return showToast('Please select a file to upload.', 'warning');
+  const file = fileInput.files[0];
+  if (file.size > 5 * 1024 * 1024) return showToast('File exceeds 5 MB limit.', 'warning');
+
+  const fd = new FormData();
+  fd.append('internId',     currentInternId);
+  fd.append('documentType', label);
+  fd.append('file',         file);
+
+  setLoading(btn, true);
+  const prog = document.getElementById('uploadProgress');
+  const bar  = document.getElementById('uploadBar');
+  prog.classList.remove('d-none');
+  bar.style.width = '40%';
+
+  const res = await API.files.upload('/files/upload', fd);
+  bar.style.width = '100%';
+  setTimeout(() => { prog.classList.add('d-none'); bar.style.width = '0%'; }, 700);
+  setLoading(btn, false);
+
+  if (!res?.success) return showToast(res?.message || 'Upload failed. Check file type and size.', 'error');
+  showToast(`"${label}" uploaded successfully!`, 'success');
+  document.getElementById('docLabel').value = '';
+  fileInput.value = '';
+  await loadDocs();
+  loadInterns(curPage); // refresh doc count badge in table
+}
+
+async function deleteDoc(fileId) {
+  if (!confirmAction('Permanently delete this document?')) return;
+  const res = await API.files.delete(fileId);
+  if (res?.success) { showToast('Document deleted.', 'success'); await loadDocs(); loadInterns(curPage); }
+  else showToast(res?.message || 'Failed to delete.', 'error');
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadInterns(1); });
 </script>
 </body>
 </html>

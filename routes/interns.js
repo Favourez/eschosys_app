@@ -23,7 +23,10 @@ router.get('/', async (req, res) => {
     if (status === 'completed') { where += ' AND InternshipEndDate < CURDATE()';  }
 
     const [{ total }] = await query(`SELECT COUNT(*) as total FROM INTERN WHERE ${where}`, params);
-    const rows = await query(`SELECT * FROM INTERN WHERE ${where} ORDER BY InternshipStartDate DESC LIMIT ${limit} OFFSET ${offset}`, params);
+    const rows = await query(
+      `SELECT i.*,
+        (SELECT COUNT(*) FROM file_uploads fu WHERE fu.InternID = i.InternID) AS DocCount
+       FROM INTERN i WHERE ${where} ORDER BY i.InternshipStartDate DESC LIMIT ${limit} OFFSET ${offset}`, params);
     res.json({ success: true, data: rows, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -44,12 +47,21 @@ router.get('/:id', async (req, res) => {
 // POST /api/interns
 router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
   try {
-    const { FullName, Phone, Email, Institution, FieldOfStudy, InternshipStartDate, InternshipEndDate } = req.body;
+    const {
+      FullName, Phone, Email, Institution, FieldOfStudy,
+      InternshipStartDate, InternshipEndDate,
+      GuardianName, GuardianPhone, GuardianRelationship
+    } = req.body;
     if (!FullName) return res.status(400).json({ success: false, message: 'Full name is required.' });
+    if (!Phone)    return res.status(400).json({ success: false, message: 'Phone number is required.' });
     const result = await execute(
-      `INSERT INTO INTERN (FullName,Phone,Email,Institution,FieldOfStudy,InternshipStartDate,InternshipEndDate)
-       VALUES (?,?,?,?,?,?,?)`,
-      [FullName, Phone||null, Email||null, Institution||null, FieldOfStudy||null, InternshipStartDate||null, InternshipEndDate||null]
+      `INSERT INTO INTERN
+         (FullName,Phone,Email,Institution,FieldOfStudy,InternshipStartDate,InternshipEndDate,
+          GuardianName,GuardianPhone,GuardianRelationship)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [FullName, Phone||null, Email||null, Institution||null, FieldOfStudy||null,
+       InternshipStartDate||null, InternshipEndDate||null,
+       GuardianName||null, GuardianPhone||null, GuardianRelationship||null]
     );
     const intern = await queryOne('SELECT * FROM INTERN WHERE InternID = ?', [result.insertId]);
     res.status(201).json({ success: true, message: 'Intern registered successfully.', data: intern });
@@ -59,13 +71,24 @@ router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
 // PUT /api/interns/:id
 router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
   try {
-    const { FullName, Phone, Email, Institution, FieldOfStudy, InternshipStartDate, InternshipEndDate } = req.body;
+    const {
+      FullName, Phone, Email, Institution, FieldOfStudy,
+      InternshipStartDate, InternshipEndDate,
+      GuardianName, GuardianPhone, GuardianRelationship
+    } = req.body;
     await execute(
-      `UPDATE INTERN SET FullName=?,Phone=?,Email=?,Institution=?,FieldOfStudy=?,InternshipStartDate=?,InternshipEndDate=? WHERE InternID=?`,
-      [FullName, Phone||null, Email||null, Institution||null, FieldOfStudy||null, InternshipStartDate||null, InternshipEndDate||null, req.params.id]
+      `UPDATE INTERN SET
+         FullName=?,Phone=?,Email=?,Institution=?,FieldOfStudy=?,
+         InternshipStartDate=?,InternshipEndDate=?,
+         GuardianName=?,GuardianPhone=?,GuardianRelationship=?
+       WHERE InternID=?`,
+      [FullName, Phone||null, Email||null, Institution||null, FieldOfStudy||null,
+       InternshipStartDate||null, InternshipEndDate||null,
+       GuardianName||null, GuardianPhone||null, GuardianRelationship||null,
+       req.params.id]
     );
     const updated = await queryOne('SELECT * FROM INTERN WHERE InternID = ?', [req.params.id]);
-    res.json({ success: true, message: 'Intern updated.', data: updated });
+    res.json({ success: true, message: 'Intern updated successfully.', data: updated });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
