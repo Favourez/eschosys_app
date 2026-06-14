@@ -144,15 +144,15 @@ async function setupAdditionalTables() {
     // Fix every table that may be missing AUTO_INCREMENT on its PK
     const aiTables = [
       // STUDENT.StudentID is VARCHAR(10) — ID generated in route, not here
-      ['INTERN',      'InternID'],
-      ['PAYMENT',     'PaymentID'],
-      ['PROGRAM',     'ProgramID'],
-      ['COURSE',      'CourseID'],
-      ['RESULT',      'ResultID'],
-      ['CERTIFICATE', 'CertificateID'],
-      ['LECTURER',    'LecturerID'],
-      ['STAFF',       'StaffID'],
-      ['ENROLLMENT',  'EnrollmentID'],
+      ['intern',      'InternID'],
+      ['payment',     'PaymentID'],
+      ['program',     'ProgramID'],
+      ['course',      'CourseID'],
+      ['result',      'ResultID'],
+      ['certificate', 'CertificateID'],
+      ['lecturer',    'LecturerID'],
+      ['staff',       'StaffID'],
+      ['enrollment',  'EnrollmentID'],
     ];
     for (const [tbl, col] of aiTables) {
       await ensureAutoIncrement(tbl, col).catch(e =>
@@ -169,13 +169,13 @@ async function setupAdditionalTables() {
       );
       if (cnt === 0) await conn.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${def}`);
     };
-    await addColIfMissing('INTERN',      'GuardianName',         'VARCHAR(150) NULL');
-    await addColIfMissing('INTERN',      'GuardianPhone',        'VARCHAR(50)  NULL');
-    await addColIfMissing('INTERN',      'GuardianRelationship', 'VARCHAR(100) NULL');
-    await addColIfMissing('ENROLLMENT',  'Semester',             'TINYINT NULL COMMENT "1 or 2"');
-    await addColIfMissing('ENROLLMENT',  'Level',                'TINYINT NULL COMMENT "1 to 4"');
-    await addColIfMissing('ENROLLMENT',  'Exam',                 'VARCHAR(20) NULL COMMENT "HND or Degree"');
-    await addColIfMissing('STUDENT',     'RegionOfOrigin',       'VARCHAR(50) NULL');
+    await addColIfMissing('intern',      'GuardianName',         'VARCHAR(150) NULL');
+    await addColIfMissing('intern',      'GuardianPhone',        'VARCHAR(50)  NULL');
+    await addColIfMissing('intern',      'GuardianRelationship', 'VARCHAR(100) NULL');
+    await addColIfMissing('enrollment',  'Semester',             'TINYINT NULL COMMENT "1 or 2"');
+    await addColIfMissing('enrollment',  'Level',                'TINYINT NULL COMMENT "1 to 4"');
+    await addColIfMissing('enrollment',  'Exam',                 'VARCHAR(20) NULL COMMENT "HND or Degree"');
+    await addColIfMissing('student',     'RegionOfOrigin',       'VARCHAR(50) NULL');
 
     // Fix StudentID in file_uploads: must be VARCHAR(10) to match STUDENT.StudentID
     await conn.execute(
