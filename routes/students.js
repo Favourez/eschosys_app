@@ -23,8 +23,8 @@ router.get('/', async (req, res) => {
     if (gender)    { where += ' AND s.Gender = ?';    params.push(gender); }
     if (programId) { where += ' AND e.ProgramID = ?'; params.push(programId); }
 
-    const joinClause = programId ? 'LEFT JOIN ENROLLMENT e ON s.StudentID = e.StudentID' : 'LEFT JOIN ENROLLMENT e ON s.StudentID = e.StudentID';
-    const baseSql = `FROM STUDENT s ${joinClause} LEFT JOIN PROGRAM p ON e.ProgramID = p.ProgramID WHERE ${where}`;
+    const joinClause = programId ? 'LEFT JOIN enrollment e ON s.StudentID = e.StudentID' : 'LEFT JOIN enrollment e ON s.StudentID = e.StudentID';
+    const baseSql = `FROM student s ${joinClause} LEFT JOIN program p ON e.ProgramID = p.ProgramID WHERE ${where}`;
 
     const [{ total }] = await query(`SELECT COUNT(DISTINCT s.StudentID) as total ${baseSql}`, params);
     const rows = await query(`SELECT DISTINCT s.*, p.ProgramName ${baseSql} ORDER BY s.RegistrationDate DESC LIMIT ${limit} OFFSET ${offset}`, params);
@@ -36,21 +36,21 @@ router.get('/', async (req, res) => {
 // GET /api/students/:id  (full profile)
 router.get('/:id', async (req, res) => {
   try {
-    const student = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [req.params.id]);
+    const student = await queryOne('SELECT * FROM student WHERE StudentID = ?', [req.params.id]);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
 
     const [enrollments, payments, results, certificates, files] = await Promise.all([
-      query(`SELECT e.*, p.ProgramName, sem.SemesterName FROM ENROLLMENT e
-             JOIN PROGRAM p ON e.ProgramID = p.ProgramID
-             LEFT JOIN SEMESTER sem ON e.SemesterID = sem.SemesterID
+      query(`SELECT e.*, p.ProgramName, sem.SemesterName FROM enrollment e
+             JOIN program p ON e.ProgramID = p.ProgramID
+             LEFT JOIN semester sem ON e.SemesterID = sem.SemesterID
              WHERE e.StudentID = ? ORDER BY e.EnrollmentDate DESC`, [req.params.id]),
-      query('SELECT * FROM PAYMENT WHERE StudentID = ? ORDER BY PaymentDate DESC', [req.params.id]),
-      query(`SELECT r.*, c.CourseName, c.CourseCode, sem.SemesterName FROM RESULT r
-             JOIN COURSE c ON r.CourseID = c.CourseID
-             LEFT JOIN SEMESTER sem ON r.SemesterID = sem.SemesterID
+      query('SELECT * FROM payment WHERE StudentID = ? ORDER BY PaymentDate DESC', [req.params.id]),
+      query(`SELECT r.*, c.CourseName, c.CourseCode, sem.SemesterName FROM result r
+             JOIN course c ON r.CourseID = c.CourseID
+             LEFT JOIN semester sem ON r.SemesterID = sem.SemesterID
              WHERE r.StudentID = ? ORDER BY r.SemesterID`, [req.params.id]),
-      query(`SELECT cert.*, p.ProgramName FROM CERTIFICATE cert
-             LEFT JOIN PROGRAM p ON cert.ProgramID = p.ProgramID
+      query(`SELECT cert.*, p.ProgramName FROM certificate cert
+             LEFT JOIN program p ON cert.ProgramID = p.ProgramID
              WHERE cert.StudentID = ?`, [req.params.id]),
       query('SELECT * FROM file_uploads WHERE StudentID = ? ORDER BY UploadedAt DESC', [req.params.id]),
     ]);
@@ -65,7 +65,7 @@ router.get('/:id', async (req, res) => {
 // Helper: generate next StudentID in ST001 … ST999 format
 async function nextStudentID() {
   const rows = await query(
-    `SELECT StudentID FROM STUDENT WHERE StudentID REGEXP '^ST[0-9]+$' ORDER BY CAST(SUBSTRING(StudentID,3) AS UNSIGNED) DESC LIMIT 1`
+    `SELECT StudentID FROM student WHERE StudentID REGEXP '^ST[0-9]+$' ORDER BY CAST(SUBSTRING(StudentID,3) AS UNSIGNED) DESC LIMIT 1`
   );
   if (!rows.length) return 'ST001';
   const num = parseInt(rows[0].StudentID.replace(/^ST/, ''), 10) + 1;
@@ -80,11 +80,11 @@ router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
 
     const studentId = await nextStudentID();
     await execute(
-      `INSERT INTO STUDENT (StudentID,FirstName,LastName,Gender,DateOfBirth,PhoneNumber,Email,Address,GuardianName,GuardianContact,NationalIDNumber,RegistrationDate,RegionOfOrigin)
+      `INSERT INTO student (StudentID,FirstName,LastName,Gender,DateOfBirth,PhoneNumber,Email,Address,GuardianName,GuardianContact,NationalIDNumber,RegistrationDate,RegionOfOrigin)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [studentId, FirstName, LastName, Gender||'Male', DateOfBirth||null, PhoneNumber||null, Email||null, Address||null, GuardianName||null, GuardianContact||null, NationalIDNumber||null, RegistrationDate||new Date().toISOString().split('T')[0], RegionOfOrigin||null]
     );
-    const newStudent = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [studentId]);
+    const newStudent = await queryOne('SELECT * FROM student WHERE StudentID = ?', [studentId]);
     res.status(201).json({ success: true, message: 'Student registered successfully.', data: newStudent });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'A student with this email already exists.' });
@@ -97,10 +97,10 @@ router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
   try {
     const { FirstName, LastName, Gender, DateOfBirth, PhoneNumber, Email, Address, GuardianName, GuardianContact, NationalIDNumber, RegionOfOrigin } = req.body;
     await execute(
-      `UPDATE STUDENT SET FirstName=?,LastName=?,Gender=?,DateOfBirth=?,PhoneNumber=?,Email=?,Address=?,GuardianName=?,GuardianContact=?,NationalIDNumber=?,RegionOfOrigin=? WHERE StudentID=?`,
+      `UPDATE student SET FirstName=?,LastName=?,Gender=?,DateOfBirth=?,PhoneNumber=?,Email=?,Address=?,GuardianName=?,GuardianContact=?,NationalIDNumber=?,RegionOfOrigin=? WHERE StudentID=?`,
       [FirstName, LastName, Gender, DateOfBirth||null, PhoneNumber||null, Email||null, Address||null, GuardianName||null, GuardianContact||null, NationalIDNumber||null, RegionOfOrigin||null, req.params.id]
     );
-    const updated = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [req.params.id]);
+    const updated = await queryOne('SELECT * FROM student WHERE StudentID = ?', [req.params.id]);
     res.json({ success: true, message: 'Student updated successfully.', data: updated });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -108,9 +108,9 @@ router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
 // DELETE /api/students/:id
 router.delete('/:id', authorize('Administrator'), async (req, res) => {
   try {
-    const student = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [req.params.id]);
+    const student = await queryOne('SELECT * FROM student WHERE StudentID = ?', [req.params.id]);
     if (!student) return res.status(404).json({ success: false, message: 'Student not found.' });
-    await execute('DELETE FROM STUDENT WHERE StudentID = ?', [req.params.id]);
+    await execute('DELETE FROM student WHERE StudentID = ?', [req.params.id]);
     res.json({ success: true, message: `Student ${student.FirstName} ${student.LastName} deleted.` });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

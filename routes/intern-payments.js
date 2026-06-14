@@ -21,10 +21,10 @@ router.get('/', async (req, res) => {
     if (method) { where += ' AND ip.PaymentMethod = ?'; params.push(method); }
 
     const [{ total }] = await query(
-      `SELECT COUNT(*) as total FROM intern_payments ip JOIN INTERN i ON ip.InternID=i.InternID WHERE ${where}`, params);
+      `SELECT COUNT(*) as total FROM intern_payments ip JOIN intern i ON ip.InternID=i.InternID WHERE ${where}`, params);
     const rows = await query(
       `SELECT ip.*, i.FullName AS InternName, i.Phone AS InternPhone, i.Institution
-       FROM intern_payments ip JOIN INTERN i ON ip.InternID=i.InternID
+       FROM intern_payments ip JOIN intern i ON ip.InternID=i.InternID
        WHERE ${where} ORDER BY ip.PaymentDate DESC, ip.CreatedAt DESC
        LIMIT ${limit} OFFSET ${offset}`, params);
     const [totals] = await query(
@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
   try {
     const row = await queryOne(
       `SELECT ip.*, i.FullName AS InternName FROM intern_payments ip
-       JOIN INTERN i ON ip.InternID=i.InternID WHERE ip.InternPaymentID=?`, [req.params.id]);
+       JOIN intern i ON ip.InternID=i.InternID WHERE ip.InternPaymentID=?`, [req.params.id]);
     if (!row) return res.status(404).json({ success: false, message: 'Payment not found.' });
     res.json({ success: true, data: row });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -67,7 +67,7 @@ router.post('/', authorize('Administrator', 'Accountant'), async (req, res) => {
     if (!AmountPaid) return res.status(400).json({ success: false, message: 'Amount paid is required.' });
     if (!TotalFee)   return res.status(400).json({ success: false, message: 'Total fee is required.' });
 
-    const intern = await queryOne('SELECT InternID FROM INTERN WHERE InternID=?', [InternID]);
+    const intern = await queryOne('SELECT InternID FROM intern WHERE InternID=?', [InternID]);
     if (!intern) return res.status(404).json({ success: false, message: 'Intern not found.' });
 
     // Sum all previous payments for this intern
@@ -85,7 +85,7 @@ router.post('/', authorize('Administrator', 'Accountant'), async (req, res) => {
 
     const payment = await queryOne(
       `SELECT ip.*, i.FullName AS InternName FROM intern_payments ip
-       JOIN INTERN i ON ip.InternID=i.InternID WHERE ip.InternPaymentID=?`, [r.insertId]);
+       JOIN intern i ON ip.InternID=i.InternID WHERE ip.InternPaymentID=?`, [r.insertId]);
     res.status(201).json({ success: true, message: 'Intern payment recorded.', data: payment });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Receipt number already exists.' });
@@ -113,7 +113,7 @@ router.put('/:id', authorize('Administrator', 'Accountant'), async (req, res) =>
        PaymentDate, PaymentMethod||'Cash', Notes||null, req.params.id]);
     const updated = await queryOne(
       `SELECT ip.*, i.FullName AS InternName FROM intern_payments ip
-       JOIN INTERN i ON ip.InternID=i.InternID WHERE ip.InternPaymentID=?`, [req.params.id]);
+       JOIN intern i ON ip.InternID=i.InternID WHERE ip.InternPaymentID=?`, [req.params.id]);
     res.json({ success: true, message: 'Payment updated.', data: updated });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

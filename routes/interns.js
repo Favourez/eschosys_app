@@ -22,11 +22,11 @@ router.get('/', async (req, res) => {
     if (status === 'active')    { where += ' AND InternshipEndDate >= CURDATE()'; }
     if (status === 'completed') { where += ' AND InternshipEndDate < CURDATE()';  }
 
-    const [{ total }] = await query(`SELECT COUNT(*) as total FROM INTERN WHERE ${where}`, params);
+    const [{ total }] = await query(`SELECT COUNT(*) as total FROM intern WHERE ${where}`, params);
     const rows = await query(
       `SELECT i.*,
         (SELECT COUNT(*) FROM file_uploads fu WHERE fu.InternID = i.InternID) AS DocCount
-       FROM INTERN i WHERE ${where} ORDER BY i.InternshipStartDate DESC LIMIT ${limit} OFFSET ${offset}`, params);
+       FROM intern i WHERE ${where} ORDER BY i.InternshipStartDate DESC LIMIT ${limit} OFFSET ${offset}`, params);
     res.json({ success: true, data: rows, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -34,11 +34,11 @@ router.get('/', async (req, res) => {
 // GET /api/interns/:id
 router.get('/:id', async (req, res) => {
   try {
-    const intern = await queryOne('SELECT * FROM INTERN WHERE InternID = ?', [req.params.id]);
+    const intern = await queryOne('SELECT * FROM intern WHERE InternID = ?', [req.params.id]);
     if (!intern) return res.status(404).json({ success: false, message: 'Intern not found.' });
     const [files, certs] = await Promise.all([
       query('SELECT * FROM file_uploads WHERE InternID = ? ORDER BY UploadedAt DESC', [req.params.id]),
-      query('SELECT * FROM CERTIFICATE WHERE StudentID IS NULL AND CertificateNumber LIKE ? ORDER BY IssueDate DESC', [`INT-${req.params.id}%`]),
+      query('SELECT * FROM certificate WHERE StudentID IS NULL AND CertificateNumber LIKE ? ORDER BY IssueDate DESC', [`INT-${req.params.id}%`]),
     ]);
     res.json({ success: true, data: { ...intern, files, certificates: certs } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -55,7 +55,7 @@ router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
     if (!FullName) return res.status(400).json({ success: false, message: 'Full name is required.' });
     if (!Phone)    return res.status(400).json({ success: false, message: 'Phone number is required.' });
     const result = await execute(
-      `INSERT INTO INTERN
+      `INSERT INTO intern
          (FullName,Phone,Email,Institution,FieldOfStudy,InternshipStartDate,InternshipEndDate,
           GuardianName,GuardianPhone,GuardianRelationship)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
@@ -63,7 +63,7 @@ router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
        InternshipStartDate||null, InternshipEndDate||null,
        GuardianName||null, GuardianPhone||null, GuardianRelationship||null]
     );
-    const intern = await queryOne('SELECT * FROM INTERN WHERE InternID = ?', [result.insertId]);
+    const intern = await queryOne('SELECT * FROM intern WHERE InternID = ?', [result.insertId]);
     res.status(201).json({ success: true, message: 'Intern registered successfully.', data: intern });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -77,7 +77,7 @@ router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
       GuardianName, GuardianPhone, GuardianRelationship
     } = req.body;
     await execute(
-      `UPDATE INTERN SET
+      `UPDATE intern SET
          FullName=?,Phone=?,Email=?,Institution=?,FieldOfStudy=?,
          InternshipStartDate=?,InternshipEndDate=?,
          GuardianName=?,GuardianPhone=?,GuardianRelationship=?
@@ -87,7 +87,7 @@ router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
        GuardianName||null, GuardianPhone||null, GuardianRelationship||null,
        req.params.id]
     );
-    const updated = await queryOne('SELECT * FROM INTERN WHERE InternID = ?', [req.params.id]);
+    const updated = await queryOne('SELECT * FROM intern WHERE InternID = ?', [req.params.id]);
     res.json({ success: true, message: 'Intern updated successfully.', data: updated });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -95,9 +95,9 @@ router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
 // DELETE /api/interns/:id
 router.delete('/:id', authorize('Administrator'), async (req, res) => {
   try {
-    const intern = await queryOne('SELECT * FROM INTERN WHERE InternID = ?', [req.params.id]);
+    const intern = await queryOne('SELECT * FROM intern WHERE InternID = ?', [req.params.id]);
     if (!intern) return res.status(404).json({ success: false, message: 'Intern not found.' });
-    await execute('DELETE FROM INTERN WHERE InternID = ?', [req.params.id]);
+    await execute('DELETE FROM intern WHERE InternID = ?', [req.params.id]);
     res.json({ success: true, message: `Intern ${intern.FullName} deleted.` });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

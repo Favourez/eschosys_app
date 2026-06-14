@@ -20,12 +20,12 @@ router.get('/', async (req, res) => {
     }
     if (method) { where += ' AND p.PaymentMethod = ?'; params.push(method); }
 
-    const [{ total }] = await query(`SELECT COUNT(*) as total FROM PAYMENT p JOIN STUDENT s ON p.StudentID=s.StudentID WHERE ${where}`, params);
+    const [{ total }] = await query(`SELECT COUNT(*) as total FROM payment p JOIN student s ON p.StudentID=s.StudentID WHERE ${where}`, params);
     const rows = await query(
       `SELECT p.*, CONCAT(s.FirstName,' ',s.LastName) as StudentName, s.StudentID
-       FROM PAYMENT p JOIN STUDENT s ON p.StudentID=s.StudentID WHERE ${where}
+       FROM payment p JOIN student s ON p.StudentID=s.StudentID WHERE ${where}
        ORDER BY p.PaymentDate DESC LIMIT ${limit} OFFSET ${offset}`, params);
-    const [totals] = await query('SELECT COALESCE(SUM(AmountPaid),0) as totalPaid, COALESCE(SUM(Balance),0) as totalBalance FROM PAYMENT');
+    const [totals] = await query('SELECT COALESCE(SUM(AmountPaid),0) as totalPaid, COALESCE(SUM(Balance),0) as totalBalance FROM payment');
     res.json({ success: true, data: rows, totals, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -33,8 +33,8 @@ router.get('/', async (req, res) => {
 // GET /api/payments/student/:studentId
 router.get('/student/:studentId', async (req, res) => {
   try {
-    const payments = await query('SELECT * FROM PAYMENT WHERE StudentID = ? ORDER BY PaymentDate DESC', [req.params.studentId]);
-    const [summary] = await query('SELECT COALESCE(SUM(AmountPaid),0) as totalPaid, COALESCE(SUM(Balance),0) as totalBalance FROM PAYMENT WHERE StudentID=?', [req.params.studentId]);
+    const payments = await query('SELECT * FROM payment WHERE StudentID = ? ORDER BY PaymentDate DESC', [req.params.studentId]);
+    const [summary] = await query('SELECT COALESCE(SUM(AmountPaid),0) as totalPaid, COALESCE(SUM(Balance),0) as totalBalance FROM payment WHERE StudentID=?', [req.params.studentId]);
     res.json({ success: true, data: payments, summary });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
@@ -42,7 +42,7 @@ router.get('/student/:studentId', async (req, res) => {
 // GET /api/payments/:id
 router.get('/:id', async (req, res) => {
   try {
-    const payment = await queryOne(`SELECT p.*, CONCAT(s.FirstName,' ',s.LastName) as StudentName FROM PAYMENT p JOIN STUDENT s ON p.StudentID=s.StudentID WHERE p.PaymentID=?`, [req.params.id]);
+    const payment = await queryOne(`SELECT p.*, CONCAT(s.FirstName,' ',s.LastName) as StudentName FROM payment p JOIN student s ON p.StudentID=s.StudentID WHERE p.PaymentID=?`, [req.params.id]);
     if (!payment) return res.status(404).json({ success: false, message: 'Payment not found.' });
     res.json({ success: true, data: payment });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -55,10 +55,10 @@ router.post('/', authorize('Administrator','Accountant'), async (req, res) => {
     if (!StudentID || !AmountPaid) return res.status(400).json({ success: false, message: 'Student and amount are required.' });
     const receipt = ReceiptNumber || `RCP-${Date.now()}`;
     const r = await execute(
-      `INSERT INTO PAYMENT (StudentID,ReceiptNumber,PayerName,PaymentDate,AmountPaid,Balance,PaymentMethod) VALUES (?,?,?,?,?,?,?)`,
+      `INSERT INTO payment (StudentID,ReceiptNumber,PayerName,PaymentDate,AmountPaid,Balance,PaymentMethod) VALUES (?,?,?,?,?,?,?)`,
       [StudentID, receipt, PayerName||null, PaymentDate||new Date().toISOString().split('T')[0], AmountPaid, Balance||0, PaymentMethod||'Cash']
     );
-    const payment = await queryOne(`SELECT p.*, CONCAT(s.FirstName,' ',s.LastName) as StudentName FROM PAYMENT p JOIN STUDENT s ON p.StudentID=s.StudentID WHERE p.PaymentID=?`, [r.insertId]);
+    const payment = await queryOne(`SELECT p.*, CONCAT(s.FirstName,' ',s.LastName) as StudentName FROM payment p JOIN student s ON p.StudentID=s.StudentID WHERE p.PaymentID=?`, [r.insertId]);
     res.status(201).json({ success: true, message: 'Payment recorded.', data: payment });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'Receipt number already exists.' });
@@ -70,7 +70,7 @@ router.post('/', authorize('Administrator','Accountant'), async (req, res) => {
 router.put('/:id', authorize('Administrator','Accountant'), async (req, res) => {
   try {
     const { PayerName, PaymentDate, AmountPaid, Balance, PaymentMethod } = req.body;
-    await execute('UPDATE PAYMENT SET PayerName=?,PaymentDate=?,AmountPaid=?,Balance=?,PaymentMethod=? WHERE PaymentID=?',
+    await execute('UPDATE payment SET PayerName=?,PaymentDate=?,AmountPaid=?,Balance=?,PaymentMethod=? WHERE PaymentID=?',
       [PayerName||null, PaymentDate, AmountPaid, Balance||0, PaymentMethod||'Cash', req.params.id]);
     res.json({ success: true, message: 'Payment updated.' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
@@ -79,7 +79,7 @@ router.put('/:id', authorize('Administrator','Accountant'), async (req, res) => 
 // DELETE /api/payments/:id
 router.delete('/:id', authorize('Administrator'), async (req, res) => {
   try {
-    await execute('DELETE FROM PAYMENT WHERE PaymentID = ?', [req.params.id]);
+    await execute('DELETE FROM payment WHERE PaymentID = ?', [req.params.id]);
     res.json({ success: true, message: 'Payment deleted.' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

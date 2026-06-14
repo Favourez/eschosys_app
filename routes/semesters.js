@@ -7,7 +7,7 @@ router.use(authenticate);
 // GET /api/semesters
 router.get('/', async (req, res) => {
   try {
-    let rows = await query('SELECT * FROM SEMESTER ORDER BY StartDate DESC');
+    let rows = await query('SELECT * FROM semester ORDER BY StartDate DESC');
 
     // Seed default semesters if the table is empty
     if (!rows.length) {
@@ -21,11 +21,11 @@ router.get('/', async (req, res) => {
       ];
       for (const [name, year, start, end] of seeds) {
         await execute(
-          'INSERT IGNORE INTO SEMESTER (SemesterName, AcademicYear, StartDate, EndDate) VALUES (?,?,?,?)',
+          'INSERT IGNORE INTO semester (SemesterName, AcademicYear, StartDate, EndDate) VALUES (?,?,?,?)',
           [name, year, start, end]
         ).catch(() => {}); // ignore if columns differ
       }
-      rows = await query('SELECT * FROM SEMESTER ORDER BY StartDate DESC');
+      rows = await query('SELECT * FROM semester ORDER BY StartDate DESC');
     }
 
     res.json({ success: true, data: rows });
