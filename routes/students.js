@@ -62,18 +62,29 @@ router.get('/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
+// Helper: generate next StudentID in ST001 … ST999 format
+async function nextStudentID() {
+  const rows = await query(
+    `SELECT StudentID FROM STUDENT WHERE StudentID REGEXP '^ST[0-9]+$' ORDER BY CAST(SUBSTRING(StudentID,3) AS UNSIGNED) DESC LIMIT 1`
+  );
+  if (!rows.length) return 'ST001';
+  const num = parseInt(rows[0].StudentID.replace(/^ST/, ''), 10) + 1;
+  return 'ST' + String(num).padStart(3, '0');
+}
+
 // POST /api/students
 router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
   try {
-    const { FirstName, LastName, Gender, DateOfBirth, PhoneNumber, Email, Address, GuardianName, GuardianContact, NationalIDNumber, RegistrationDate } = req.body;
+    const { FirstName, LastName, Gender, DateOfBirth, PhoneNumber, Email, Address, GuardianName, GuardianContact, NationalIDNumber, RegistrationDate, RegionOfOrigin } = req.body;
     if (!FirstName || !LastName) return res.status(400).json({ success: false, message: 'First name and last name are required.' });
 
-    const result = await execute(
-      `INSERT INTO STUDENT (FirstName,LastName,Gender,DateOfBirth,PhoneNumber,Email,Address,GuardianName,GuardianContact,NationalIDNumber,RegistrationDate)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [FirstName, LastName, Gender||'Male', DateOfBirth||null, PhoneNumber||null, Email||null, Address||null, GuardianName||null, GuardianContact||null, NationalIDNumber||null, RegistrationDate||new Date().toISOString().split('T')[0]]
+    const studentId = await nextStudentID();
+    await execute(
+      `INSERT INTO STUDENT (StudentID,FirstName,LastName,Gender,DateOfBirth,PhoneNumber,Email,Address,GuardianName,GuardianContact,NationalIDNumber,RegistrationDate,RegionOfOrigin)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [studentId, FirstName, LastName, Gender||'Male', DateOfBirth||null, PhoneNumber||null, Email||null, Address||null, GuardianName||null, GuardianContact||null, NationalIDNumber||null, RegistrationDate||new Date().toISOString().split('T')[0], RegionOfOrigin||null]
     );
-    const newStudent = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [result.insertId]);
+    const newStudent = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [studentId]);
     res.status(201).json({ success: true, message: 'Student registered successfully.', data: newStudent });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ success: false, message: 'A student with this email already exists.' });
@@ -84,10 +95,10 @@ router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
 // PUT /api/students/:id
 router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
   try {
-    const { FirstName, LastName, Gender, DateOfBirth, PhoneNumber, Email, Address, GuardianName, GuardianContact, NationalIDNumber } = req.body;
+    const { FirstName, LastName, Gender, DateOfBirth, PhoneNumber, Email, Address, GuardianName, GuardianContact, NationalIDNumber, RegionOfOrigin } = req.body;
     await execute(
-      `UPDATE STUDENT SET FirstName=?,LastName=?,Gender=?,DateOfBirth=?,PhoneNumber=?,Email=?,Address=?,GuardianName=?,GuardianContact=?,NationalIDNumber=? WHERE StudentID=?`,
-      [FirstName, LastName, Gender, DateOfBirth||null, PhoneNumber||null, Email||null, Address||null, GuardianName||null, GuardianContact||null, NationalIDNumber||null, req.params.id]
+      `UPDATE STUDENT SET FirstName=?,LastName=?,Gender=?,DateOfBirth=?,PhoneNumber=?,Email=?,Address=?,GuardianName=?,GuardianContact=?,NationalIDNumber=?,RegionOfOrigin=? WHERE StudentID=?`,
+      [FirstName, LastName, Gender, DateOfBirth||null, PhoneNumber||null, Email||null, Address||null, GuardianName||null, GuardianContact||null, NationalIDNumber||null, RegionOfOrigin||null, req.params.id]
     );
     const updated = await queryOne('SELECT * FROM STUDENT WHERE StudentID = ?', [req.params.id]);
     res.json({ success: true, message: 'Student updated successfully.', data: updated });

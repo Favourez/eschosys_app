@@ -33,8 +33,8 @@
         <div class="tbl-head"><h5><i class="fas fa-list me-2" style="color:var(--primary)"></i>Enrollments <span class="badge bg-primary" id="totalBadge">0</span></h5></div>
         <div class="table-responsive">
           <table class="table table-hover" id="enrollTable">
-            <thead><tr><th>#</th><th>Student</th><th>Program</th><th>Semester</th><th>Enrolled Date</th><th class="text-center">Status</th><th class="text-center">Actions</th></tr></thead>
-            <tbody id="enrollBody"><tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
+            <thead><tr><th>#</th><th>Student</th><th>Program</th><th class="text-center">Semester</th><th class="text-center">Level</th><th class="text-center">Exam</th><th>Enrolled Date</th><th class="text-center">Status</th><th class="text-center">Actions</th></tr></thead>
+            <tbody id="enrollBody"><tr><td colspan="9" class="text-center py-5"><div class="spinner-border text-primary"></div></td></tr></tbody>
           </table>
         </div>
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top"><small class="text-muted" id="pageInfo"></small><div id="pagination"></div></div>
@@ -51,11 +51,36 @@
       <form id="enrollForm">
         <input type="hidden" id="enrollId">
         <div class="row g-3">
-          <div class="col-12"><label class="form-label">Student *</label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
-          <div class="col-12"><label class="form-label">Program *</label><select class="form-select" id="fProgram" required><option value="">Select program…</option></select></div>
-          <div class="col-md-6"><label class="form-label">Semester</label><select class="form-select" id="fSemester"><option value="">Select semester…</option></select></div>
-          <div class="col-md-6"><label class="form-label">Status</label><select class="form-select" id="fStatus"><option>Active</option><option>Completed</option><option>Dropped</option><option>Suspended</option></select></div>
-          <div class="col-md-6"><label class="form-label">Enrollment Date</label><input type="date" class="form-control" id="fDate"></div>
+          <div class="col-12"><label class="form-label fw-semibold">Student <span class="text-danger">*</span></label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
+          <div class="col-12"><label class="form-label fw-semibold">Program <span class="text-danger">*</span></label><select class="form-select" id="fProgram" required><option value="">Select program…</option></select></div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Semester</label>
+            <select class="form-select" id="fSemester">
+              <option value="">Select semester…</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Level</label>
+            <select class="form-select" id="fLevel">
+              <option value="">Select level…</option>
+              <option value="1">Level 1</option>
+              <option value="2">Level 2</option>
+              <option value="3">Level 3</option>
+              <option value="4">Level 4</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Exam</label>
+            <select class="form-select" id="fExam">
+              <option value="">Select exam…</option>
+              <option value="HND">HND</option>
+              <option value="Degree">Degree</option>
+            </select>
+          </div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Status</label><select class="form-select" id="fStatus"><option>Active</option><option>Completed</option><option>Dropped</option><option>Suspended</option></select></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Enrollment Date</label><input type="date" class="form-control" id="fDate"></div>
         </div>
       </form>
     </div>
@@ -87,18 +112,20 @@ async function loadEnrollments(page=1){
   const params={page,limit:20,studentId:document.getElementById('studentFilter').value,programId:document.getElementById('programFilter').value,status:document.getElementById('statusFilter').value};
   const res=await API.enrollment.list(params);
   const tbody=document.getElementById('enrollBody');
-  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><i class="fas fa-clipboard-list"></i><h6>No enrollments found</h6></div></td></tr>';document.getElementById('totalBadge').textContent='0';return;}
+  if(!res?.data?.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><i class="fas fa-clipboard-list"></i><h6>No enrollments found</h6></div></td></tr>';document.getElementById('totalBadge').textContent='0';return;}
   document.getElementById('totalBadge').textContent=res.pagination?.total||res.data.length;
   document.getElementById('pageInfo').textContent=`Showing ${res.data.length} of ${res.pagination?.total||res.data.length} records`;
   tbody.innerHTML=res.data.map((e,i)=>`<tr>
     <td>${(page-1)*20+i+1}</td>
     <td><a href="/student-profile.html?id=${e.StudentID}" style="font-weight:600">${e.StudentName}</a></td>
     <td style="font-size:.82rem">${e.ProgramName||'—'}</td>
-    <td style="font-size:.78rem">${e.SemesterName||'—'}</td>
+    <td class="text-center">${e.Semester?`<span class="badge bg-primary">Sem ${e.Semester}</span>`:'<span class="text-muted">—</span>'}</td>
+    <td class="text-center">${e.Level?`<span class="badge bg-secondary">Level ${e.Level}</span>`:'<span class="text-muted">—</span>'}</td>
+    <td class="text-center">${e.Exam?`<span class="badge bg-warning text-dark">${e.Exam}</span>`:'<span class="text-muted">—</span>'}</td>
     <td style="font-size:.78rem">${fmtDate(e.EnrollmentDate)}</td>
     <td class="text-center">${statusBadge(e.Status)}</td>
     <td class="text-center">
-      <button class="btn btn-sm btn-outline-secondary me-1" onclick="editEnrollment(${e.EnrollmentID},${e.StudentID},${e.ProgramID||'null'},${e.SemesterID||'null'},'${e.Status}','${e.EnrollmentDate?.split('T')[0]||''}')"><i class="fas fa-edit"></i></button>
+      <button class="btn btn-sm btn-outline-secondary me-1" onclick="editEnrollment(${e.EnrollmentID},'${e.StudentID}',${e.ProgramID||'null'},${e.SemesterID||'null'},${e.Semester||'null'},${e.Level||'null'},'${e.Exam||''}','${e.Status}','${e.EnrollmentDate?.split('T')[0]||''}')"><i class="fas fa-edit"></i></button>
       <button class="btn btn-sm btn-outline-danger" onclick="deleteEnrollment(${e.EnrollmentID})"><i class="fas fa-trash"></i></button>
     </td></tr>`).join('');
   renderPagination('pagination',page,res.pagination?.totalPages||1,loadEnrollments);
@@ -112,11 +139,13 @@ function openAdd(){
   document.getElementById('modalTitle').textContent='Enroll Student';modal.show();
 }
 
-function editEnrollment(id,sId,pId,semId,status,date){
+function editEnrollment(id,sId,pId,semId,sem,level,exam,status,date){
   document.getElementById('enrollId').value=id;
   document.getElementById('fStudent').value=sId;
   document.getElementById('fProgram').value=pId||'';
-  document.getElementById('fSemester').value=semId||'';
+  document.getElementById('fSemester').value=sem||'';
+  document.getElementById('fLevel').value=level||'';
+  document.getElementById('fExam').value=exam||'';
   document.getElementById('fStatus').value=status||'Active';
   document.getElementById('fDate').value=date||'';
   document.getElementById('modalTitle').textContent='Edit Enrollment';modal.show();
@@ -125,7 +154,15 @@ function editEnrollment(id,sId,pId,semId,status,date){
 async function saveEnrollment(){
   const btn=document.getElementById('saveBtn');
   const id=document.getElementById('enrollId').value;
-  const data={StudentID:document.getElementById('fStudent').value,ProgramID:document.getElementById('fProgram').value||null,SemesterID:document.getElementById('fSemester').value||null,Status:document.getElementById('fStatus').value,EnrollmentDate:document.getElementById('fDate').value||null};
+  const data={
+    StudentID:document.getElementById('fStudent').value,
+    ProgramID:document.getElementById('fProgram').value||null,
+    Semester:document.getElementById('fSemester').value||null,
+    Level:document.getElementById('fLevel').value||null,
+    Exam:document.getElementById('fExam').value||null,
+    Status:document.getElementById('fStatus').value,
+    EnrollmentDate:document.getElementById('fDate').value||null
+  };
   if(!data.StudentID||!data.ProgramID)return showToast('Student and program are required.','warning');
   setLoading(btn,true);
   const res=id?await API.enrollment.update(id,data):await API.enrollment.create(data);

@@ -17,7 +17,7 @@
     <div class="page-content fade-in">
 
       <div class="page-header">
-        <div><h1 class="page-title"><i class="fas fa-chart-bar me-2" style="color:var(--gold)"></i>Academic Results</h1><p class="page-subtitle">CA (30%) + Exam (70%) = Final Grade</p></div>
+        <div><h1 class="page-title"><i class="fas fa-chart-bar me-2" style="color:var(--gold)"></i>Academic Results</h1><p class="page-subtitle">CA (out of 30) + Exam (out of 70) = Final Grade (out of 100)</p></div>
         <button class="btn btn-primary fw-bold" onclick="openAdd()"><i class="fas fa-plus me-2"></i>Enter Result</button>
       </div>
 
@@ -54,16 +54,16 @@
           <div class="col-12"><label class="form-label">Student *</label><select class="form-select" id="fStudent" required><option value="">Select student…</option></select></div>
           <div class="col-12"><label class="form-label">Course *</label><select class="form-select" id="fCourse" required><option value="">Select course…</option></select></div>
           <div class="col-12"><label class="form-label">Semester</label><select class="form-select" id="fSemester"><option value="">Select semester…</option></select></div>
-          <div class="col-md-6"><label class="form-label">CA Score (max 30)</label><input type="number" class="form-control" id="fCA" min="0" max="30" step="0.5" value="0" oninput="updatePreview()"></div>
-          <div class="col-md-6"><label class="form-label">Exam Score (max 70)</label><input type="number" class="form-control" id="fExam" min="0" max="70" step="0.5" value="0" oninput="updatePreview()"></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">CA Score <span class="text-muted fw-normal">(out of 30)</span></label><input type="number" class="form-control" id="fCA" min="0" max="30" step="0.5" value="0" oninput="updatePreview()"></div>
+          <div class="col-md-6"><label class="form-label fw-semibold">Exam Score <span class="text-muted fw-normal">(out of 70)</span></label><input type="number" class="form-control" id="fExam" min="0" max="70" step="0.5" value="0" oninput="updatePreview()"></div>
           <div class="col-12">
             <div class="p-3 rounded" style="background:var(--gray-100);border:1px solid var(--gray-200)">
               <div class="d-flex justify-content-between align-items-center">
-                <span style="font-size:.82rem;font-weight:600">Calculated Final Grade</span>
-                <div class="text-end"><span id="previewFinal" style="font-size:1.4rem;font-weight:800;color:var(--primary)">0.00</span><span id="previewGrade" style="font-size:1.1rem;font-weight:700;margin-left:.5rem;color:#198754">—</span></div>
+                <span style="font-size:.82rem;font-weight:600">Final Grade (out of 100)</span>
+                <div class="text-end"><span id="previewFinal" style="font-size:1.4rem;font-weight:800;color:var(--primary)">0</span><span style="font-size:.85rem;color:var(--gray-500)">/100</span><span id="previewGrade" style="font-size:1.1rem;font-weight:700;margin-left:.6rem;color:#198754">—</span></div>
               </div>
               <div class="progress mt-2" style="height:6px"><div id="previewBar" class="progress-bar bg-primary" style="width:0%;transition:.3s"></div></div>
-              <small class="text-muted" style="font-size:.72rem">Formula: (CA × 30%) + (Exam × 70%)</small>
+              <small class="text-muted" style="font-size:.72rem">Final = CA + Exam &nbsp;·&nbsp; Max: 30 + 70 = 100</small>
             </div>
           </div>
         </div>
@@ -80,9 +80,23 @@ let curPage=1;
 const modal=new bootstrap.Modal(document.getElementById('resultModal'));
 
 initLayout().then(async()=>{
-  const [students,courses,semesters]=await Promise.all([API.students.list({limit:1000}),API.courses.list(),API.get('/api/semesters').catch(()=>({data:[]}))]);
-  if(students?.data){ const sel=document.getElementById('fStudent'),sf=document.getElementById('studentFilter'); students.data.forEach(s=>{const o=`<option value="${s.StudentID}">${s.FirstName} ${s.LastName}</option>`;sel.insertAdjacentHTML('beforeend',o);sf.insertAdjacentHTML('beforeend',o);}); }
-  if(courses?.data){ const sel=document.getElementById('fCourse'),cf=document.getElementById('courseFilter'); courses.data.forEach(c=>{const o=`<option value="${c.CourseID}">${c.CourseName} (${c.CourseCode})</option>`;sel.insertAdjacentHTML('beforeend',o);cf.insertAdjacentHTML('beforeend',o);}); }
+  const [students,courses,semRes]=await Promise.all([
+    API.students.list({limit:1000}),
+    API.courses.list(),
+    API.get('/semesters').catch(()=>({data:[]}))
+  ]);
+  if(students?.data){
+    const sel=document.getElementById('fStudent'),sf=document.getElementById('studentFilter');
+    students.data.forEach(s=>{const o=`<option value="${s.StudentID}">${s.FirstName} ${s.LastName}</option>`;sel.insertAdjacentHTML('beforeend',o);sf.insertAdjacentHTML('beforeend',o);});
+  }
+  if(courses?.data){
+    const sel=document.getElementById('fCourse'),cf=document.getElementById('courseFilter');
+    courses.data.forEach(c=>{const o=`<option value="${c.CourseID}">${c.CourseName} (${c.CourseCode||''})</option>`;sel.insertAdjacentHTML('beforeend',o);cf.insertAdjacentHTML('beforeend',o);});
+  }
+  if(semRes?.data){
+    const sel=document.getElementById('fSemester'),sf=document.getElementById('semesterFilter');
+    semRes.data.forEach(sem=>{const o=`<option value="${sem.SemesterID}">${sem.SemesterName}</option>`;sel.insertAdjacentHTML('beforeend',o);sf.insertAdjacentHTML('beforeend',o);});
+  }
   loadResults(1);
 });
 

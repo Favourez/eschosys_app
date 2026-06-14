@@ -50,9 +50,9 @@ router.post('/', authorize('Administrator','Lecturer'), async (req, res) => {
   try {
     const { StudentID, CourseID, SemesterID, CAGrade, ExamGrade } = req.body;
     if (!StudentID || !CourseID) return res.status(400).json({ success: false, message: 'Student and course are required.' });
-    const ca    = parseFloat(CAGrade)   || 0;
-    const exam  = parseFloat(ExamGrade) || 0;
-    const final = parseFloat(((ca * 0.30) + (exam * 0.70)).toFixed(2));
+    const ca    = Math.min(30,  parseFloat(CAGrade)   || 0);
+    const exam  = Math.min(70,  parseFloat(ExamGrade) || 0);
+    const final = parseFloat((ca + exam).toFixed(2)); // CA/30 + Exam/70 = /100
 
     const existing = await queryOne('SELECT ResultID FROM RESULT WHERE StudentID=? AND CourseID=? AND SemesterID=?', [StudentID, CourseID, SemesterID||null]);
     if (existing) {
@@ -68,8 +68,9 @@ router.post('/', authorize('Administrator','Lecturer'), async (req, res) => {
 router.put('/:id', authorize('Administrator','Lecturer'), async (req, res) => {
   try {
     const { CAGrade, ExamGrade } = req.body;
-    const ca = parseFloat(CAGrade)||0; const exam = parseFloat(ExamGrade)||0;
-    const final = parseFloat(((ca*0.30)+(exam*0.70)).toFixed(2));
+    const ca = Math.min(30, parseFloat(CAGrade)||0);
+    const exam = Math.min(70, parseFloat(ExamGrade)||0);
+    const final = parseFloat((ca + exam).toFixed(2));
     await execute('UPDATE RESULT SET CAGrade=?,ExamGrade=?,FinalGrade=? WHERE ResultID=?', [ca, exam, final, req.params.id]);
     res.json({ success: true, message: 'Result updated.', data: { FinalGrade: final, grade: calcGrade(final) } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }

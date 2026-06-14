@@ -39,6 +39,7 @@ app.use('/api/intern-payments',  require('./routes/intern-payments'));
 app.use('/api/results',      require('./routes/results'));
 app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/enrollment',   require('./routes/enrollment'));
+app.use('/api/semesters',    require('./routes/semesters'));
 app.use('/api/reports',      require('./routes/reports'));
 app.use('/api/users',        require('./routes/users'));
 app.use('/api/search',       require('./routes/search'));

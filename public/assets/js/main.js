@@ -44,8 +44,8 @@ function fmtDateTime(d) {
   return dt.toLocaleDateString('fr-CM') + ' ' + dt.toLocaleTimeString('fr-CM', { hour:'2-digit', minute:'2-digit' });
 }
 function calcGrade(ca, exam) {
-  const final = (parseFloat(ca) * 0.30) + (parseFloat(exam) * 0.70);
-  const f2 = parseFloat(final.toFixed(2));
+  // CA is out of 30, Exam is out of 70 — simple addition = score out of 100
+  const f2 = Math.min(100, parseFloat((parseFloat(ca||0) + parseFloat(exam||0)).toFixed(2)));
   let g = 'F';
   if (f2>=90)g='A+'; else if(f2>=80)g='A'; else if(f2>=75)g='B+';
   else if(f2>=70)g='B'; else if(f2>=65)g='C+'; else if(f2>=60)g='C'; else if(f2>=50)g='D';

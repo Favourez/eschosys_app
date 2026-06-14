@@ -28,20 +28,24 @@ router.get('/', async (req, res) => {
 
 router.post('/', authorize('Administrator','Registrar'), async (req, res) => {
   try {
-    const { StudentID, ProgramID, SemesterID, EnrollmentDate, Status } = req.body;
+    const { StudentID, ProgramID, SemesterID, Semester, Level, Exam, EnrollmentDate, Status } = req.body;
     if (!StudentID || !ProgramID) return res.status(400).json({ success: false, message: 'Student and program are required.' });
     const existing = await queryOne('SELECT EnrollmentID FROM ENROLLMENT WHERE StudentID=? AND ProgramID=?', [StudentID, ProgramID]);
     if (existing) return res.status(400).json({ success: false, message: 'Student is already enrolled in this program.' });
-    const r = await execute('INSERT INTO ENROLLMENT (StudentID,ProgramID,SemesterID,EnrollmentDate,Status) VALUES (?,?,?,?,?)',
-      [StudentID, ProgramID, SemesterID||null, EnrollmentDate||new Date().toISOString().split('T')[0], Status||'Active']);
+    const r = await execute(
+      'INSERT INTO ENROLLMENT (StudentID,ProgramID,SemesterID,Semester,Level,Exam,EnrollmentDate,Status) VALUES (?,?,?,?,?,?,?,?)',
+      [StudentID, ProgramID, SemesterID||null, Semester||null, Level||null, Exam||null,
+       EnrollmentDate||new Date().toISOString().split('T')[0], Status||'Active']);
     res.status(201).json({ success: true, message: 'Student enrolled successfully.', data: { EnrollmentID: r.insertId } });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
 router.put('/:id', authorize('Administrator','Registrar'), async (req, res) => {
   try {
-    const { Status, SemesterID } = req.body;
-    await execute('UPDATE ENROLLMENT SET Status=?,SemesterID=? WHERE EnrollmentID=?', [Status, SemesterID||null, req.params.id]);
+    const { Status, SemesterID, Semester, Level, Exam } = req.body;
+    await execute(
+      'UPDATE ENROLLMENT SET Status=?,SemesterID=?,Semester=?,Level=?,Exam=? WHERE EnrollmentID=?',
+      [Status, SemesterID||null, Semester||null, Level||null, Exam||null, req.params.id]);
     res.json({ success: true, message: 'Enrollment updated.' });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });

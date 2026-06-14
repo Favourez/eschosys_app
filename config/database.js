@@ -97,7 +97,7 @@ async function setupAdditionalTables() {
 
     await conn.execute(`CREATE TABLE IF NOT EXISTS file_uploads (
       FileID INT AUTO_INCREMENT PRIMARY KEY,
-      StudentID INT,
+      StudentID VARCHAR(10),
       InternID INT,
       DocumentType VARCHAR(50) NOT NULL,
       FileName VARCHAR(255) NOT NULL,
@@ -110,21 +110,55 @@ async function setupAdditionalTables() {
 
     // ── Ensure AUTO_INCREMENT on primary keys that may be missing it ──
     const ensureAutoIncrement = async (table, pkCol) => {
-      const [[row]] = await conn.execute(
-        `SELECT EXTRA FROM INFORMATION_SCHEMA.COLUMNS
+      // 1. Read actual column type + current extras
+      const [[col]] = await conn.execute(
+        `SELECT EXTRA, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
         [table, pkCol]
       );
-      if (row && !row.EXTRA.includes('auto_increment')) {
-        await conn.execute('SET FOREIGN_KEY_CHECKS=0');
+      if (!col || col.EXTRA.includes('auto_increment')) return; // already fine
+
+      // 2. Drop any child FK constraints that reference this column
+      //    (type-mismatch errors only appear when a referencing FK exists)
+      const [fkRows] = await conn.execute(
+        `SELECT TABLE_NAME, CONSTRAINT_NAME
+         FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+         WHERE REFERENCED_TABLE_SCHEMA = DATABASE()
+           AND REFERENCED_TABLE_NAME   = ?
+           AND REFERENCED_COLUMN_NAME  = ?`,
+        [table, pkCol]
+      );
+      await conn.execute('SET FOREIGN_KEY_CHECKS=0');
+      for (const fk of fkRows) {
         await conn.execute(
-          `ALTER TABLE \`${table}\` MODIFY COLUMN \`${pkCol}\` INT NOT NULL AUTO_INCREMENT`
-        );
-        await conn.execute('SET FOREIGN_KEY_CHECKS=1');
+          `ALTER TABLE \`${fk.TABLE_NAME}\` DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``
+        ).catch(() => {}); // ignore if already gone
       }
+
+      // 3. Modify using the column's real type (INT, INT UNSIGNED, BIGINT, …)
+      await conn.execute(
+        `ALTER TABLE \`${table}\` MODIFY COLUMN \`${pkCol}\` ${col.COLUMN_TYPE} NOT NULL AUTO_INCREMENT`
+      );
+      await conn.execute('SET FOREIGN_KEY_CHECKS=1');
     };
-    await ensureAutoIncrement('INTERN',  'InternID');
-    await ensureAutoIncrement('PAYMENT', 'PaymentID');
+    // Fix every table that may be missing AUTO_INCREMENT on its PK
+    const aiTables = [
+      // STUDENT.StudentID is VARCHAR(10) — ID generated in route, not here
+      ['INTERN',      'InternID'],
+      ['PAYMENT',     'PaymentID'],
+      ['PROGRAM',     'ProgramID'],
+      ['COURSE',      'CourseID'],
+      ['RESULT',      'ResultID'],
+      ['CERTIFICATE', 'CertificateID'],
+      ['LECTURER',    'LecturerID'],
+      ['STAFF',       'StaffID'],
+      ['ENROLLMENT',  'EnrollmentID'],
+    ];
+    for (const [tbl, col] of aiTables) {
+      await ensureAutoIncrement(tbl, col).catch(e =>
+        console.warn(`⚠️  AUTO_INCREMENT fix skipped for ${tbl}.${col}: ${e.message}`)
+      );
+    }
 
     // ── Add Guardian columns to INTERN if they don't exist ───────
     const addColIfMissing = async (table, col, def) => {
@@ -135,14 +169,23 @@ async function setupAdditionalTables() {
       );
       if (cnt === 0) await conn.execute(`ALTER TABLE \`${table}\` ADD COLUMN \`${col}\` ${def}`);
     };
-    await addColIfMissing('INTERN', 'GuardianName',         'VARCHAR(150) NULL');
-    await addColIfMissing('INTERN', 'GuardianPhone',        'VARCHAR(50)  NULL');
-    await addColIfMissing('INTERN', 'GuardianRelationship', 'VARCHAR(100) NULL');
+    await addColIfMissing('INTERN',      'GuardianName',         'VARCHAR(150) NULL');
+    await addColIfMissing('INTERN',      'GuardianPhone',        'VARCHAR(50)  NULL');
+    await addColIfMissing('INTERN',      'GuardianRelationship', 'VARCHAR(100) NULL');
+    await addColIfMissing('ENROLLMENT',  'Semester',             'TINYINT NULL COMMENT "1 or 2"');
+    await addColIfMissing('ENROLLMENT',  'Level',                'TINYINT NULL COMMENT "1 to 4"');
+    await addColIfMissing('ENROLLMENT',  'Exam',                 'VARCHAR(20) NULL COMMENT "HND or Degree"');
+    await addColIfMissing('STUDENT',     'RegionOfOrigin',       'VARCHAR(50) NULL');
+
+    // Fix StudentID in file_uploads: must be VARCHAR(10) to match STUDENT.StudentID
+    await conn.execute(
+      `ALTER TABLE file_uploads MODIFY COLUMN StudentID VARCHAR(10) NULL`
+    ).catch(() => {});
 
     // Widen DocumentType so users can store long document labels
     await conn.execute(
       `ALTER TABLE file_uploads MODIFY COLUMN DocumentType VARCHAR(200) NOT NULL DEFAULT 'document'`
-    ).catch(() => {}); // ignore if column doesn't exist yet
+    ).catch(() => {});
 
     // Seed roles
     await conn.execute(`INSERT IGNORE INTO roles (RoleName, Description) VALUES
